@@ -1,5 +1,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
+from phases import (phase_1, phase_2, phase_3, phase_4)
 
 # one of the attributes of the RobotUI class is the phase_num, 
 # which contains the current phase the ui (and the algorithm) is in
@@ -67,6 +68,12 @@ class RobotUI:
         global phases_dict
 
         self.phase_num += 1
+
+        match self.phase_num:
+            case 1: phase_1.execute_phase(),
+            case 2: phase_2.execute_phase(),
+            case 3: phase_3.execute_phase(),
+            case 4: phase_4.execute_phase(),
 
         if self.phase_num in phases_dict and self.phase_num < 5:
             self.update_phase_label(phases_dict[self.phase_num])
