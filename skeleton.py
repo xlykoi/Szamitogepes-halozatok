@@ -1,114 +1,156 @@
-import collections
+from collections import deque
 from typing import Set, Tuple
 from environment import Environment
 
+Pos = Tuple[int, int]
 
-def compute_skeleton(env: Environment) -> Set[Tuple[int, int]]:
-    """Compute a spanning 'skeleton' (váz) for the current configuration.
-    The skeleton is a thin, connected subset of occupied cells that covers the shape
-    while minimizing cycles — used as the base structure for exoskeleton construction.
+
+def neighbors4(p: Pos, max_x: int, max_y: int):
+    """Return 4-connected neighbors within bounds."""
+    x, y = p
+    nbs = []
+    for nx, ny in [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]:
+        if 0 <= nx <= max_x and 0 <= ny <= max_y:
+            nbs.append((nx, ny))
+    return nbs
+
+
+def compute_exoskeleton_from_env(env: Environment) -> Set[Pos]:
     """
-
-    occupied_cells = set(env.grid.occupied.keys())
-    if not occupied_cells:
+    Build an exoskeleton (core + shell) from the environment.
+    Actually updates env.grid.occupied so modules "move".
+    Ensures total number of modules stays the same.
+    IMPORTANT: Leaves the central cell empty to allow module movement.
+    """
+    occupied = set(env.grid.occupied.keys())
+    if not occupied:
         return set()
 
-    x_coords = sorted({x for x, _ in occupied_cells})
-    min_x, max_x = x_coords[0], x_coords[-1]
+    # --- bounding box
+    min_x = min(x for x, _ in occupied)
+    max_x = max(x for x, _ in occupied)
+    min_y = min(y for _, y in occupied)
+    max_y = max(y for _, y in occupied)
+    total_mods = len(occupied)
 
-    def get_column_cells(x: int) -> Set[Tuple[int, int]]:
-        """Return all occupied cells that belong to a given x-column."""
-        return {cell for cell in occupied_cells if cell[0] == x}
+    # --- Calculate center cell (must remain empty)
+    center_x = (min_x + max_x) // 2
+    center_y = (min_y + max_y) // 2
+    center_cell = (center_x, center_y)
 
-    # Step 1: gather vertical components every 2nd column
-    vertical_components = []
-    current_x = min_x
-    while current_x <= max_x:
-        column_cells = get_column_cells(current_x)
-        seen_in_column = set()
-        components_in_column = []
+    # --- 1) build BFS tree (skeleton)
+    root = next(iter(occupied))
+    parent = {root: None}
+    q = deque([root])
+    while q:
+        c = q.popleft()
+        for n in neighbors4(c, max_x, max_y):
+            if n in occupied and n not in parent:
+                parent[n] = c
+                q.append(n)
+    skeleton = set(parent.keys())
 
-        # find connected vertical segments (BFS along y)
-        for cell in column_cells:
-            if cell in seen_in_column:
-                continue
+    # --- 2) Shell: all free 4-neighbors of skeleton (not occupied)
+    shell = set()
+    for (x, y) in skeleton:
+        for nx, ny in [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]:
+            if (nx, ny) not in skeleton and (nx, ny) != center_cell:
+                shell.add((nx, ny))
 
-            segment_queue = collections.deque([cell])
-            vertical_segment = {cell}
-            seen_in_column.add(cell)
+    # --- 3) Remove center cell if it's in skeleton or shell
+    skeleton.discard(center_cell)
+    shell.discard(center_cell)
 
-            while segment_queue:
-                current = segment_queue.popleft()
-                for neighbor in [(current[0], current[1] + 1), (current[0], current[1] - 1)]:
-                    if neighbor in column_cells and neighbor not in seen_in_column:
-                        seen_in_column.add(neighbor)
-                        vertical_segment.add(neighbor)
-                        segment_queue.append(neighbor)
+    # --- 4) Combine and balance to preserve module count
+    exo = skeleton | shell
 
-            components_in_column.append(vertical_segment)
+    if len(exo) > total_mods:
+        cx = sum(x for x, _ in occupied) / len(occupied)
+        cy = sum(y for _, y in occupied) / len(occupied)
 
-        vertical_components.extend(components_in_column)
-        current_x += 2  # skip alternate columns for sparsity
+        # Keep cells closest to center, prefer skeleton, but exclude center_cell
+        exo_sorted = sorted(
+            [p for p in exo if p != center_cell],
+            key=lambda p: (p not in skeleton, abs(p[0]-cx) + abs(p[1]-cy))
+        )
+        exo = set(exo_sorted[:total_mods])
 
-    # Step 2: initial skeleton = all selected vertical components
-    skeleton_cells = set()
-    for segment in vertical_components:
-        skeleton_cells |= segment
+    elif len(exo) < total_mods:
+        cx = sum(x for x, _ in occupied) / len(occupied)
+        cy = sum(y for _, y in occupied) / len(occupied)
+        candidates = [
+            (x, y)
+            for x in range(min_x-1, max_x+2)
+            for y in range(min_y-1, max_y+2)
+            if (x, y) not in exo and (x, y) != center_cell
+        ]
+        candidates.sort(key=lambda p: abs(p[0]-cx) + abs(p[1]-cy))
+        for c in candidates:
+            if len(exo) >= total_mods:
+                break
+            exo.add(c)
 
-    # Step 3: ensure every occupied cell is covered (C ⊂ N[S])
-    for cell in occupied_cells:
-        if cell in skeleton_cells:
-            continue
-        if not any(neighbor in skeleton_cells for neighbor in env.grid.neighbors4(cell)):
-            skeleton_cells.add(cell)
+    # --- 5) Ensure center cell is NOT in exoskeleton
+    exo.discard(center_cell)
 
-    # Step 4: build spanning tree over the occupied configuration
-    all_nodes = occupied_cells
-    root = next(iter(all_nodes))
-    parent_map = {root: None}
-    queue = collections.deque([root])
+    # --- 6) Update environment (this "moves" the modules)
+    env.grid.occupied.clear()
+    for pos in exo:
+        env.grid.occupied[pos] = True  # placeholder value
 
-    while queue:
-        current = queue.popleft()
-        for neighbor in env.grid.neighbors4(current):
-            if neighbor in all_nodes and neighbor not in parent_map:
-                parent_map[neighbor] = current
-                queue.append(neighbor)
-
-    tree_nodes = set(parent_map.keys())
-
-    # Step 5: select every other x-column node to form a thin spine
-    spine_cells = {cell for cell in tree_nodes if cell[0] % 2 == 0}
-
-    # add isolated nodes that have no east-west neighbors
-    for cell in tree_nodes:
-        if cell in spine_cells:
-            continue
-        east, west = (cell[0] + 1, cell[1]), (cell[0] - 1, cell[1])
-        if east not in all_nodes and west not in all_nodes:
-            spine_cells.add(cell)
-
-    # Step 6: connect the spine nodes along BFS tree paths to ensure connectivity
-    connected_skeleton = set(spine_cells)
-    spine_list = list(spine_cells)
-    for i in range(1, len(spine_list)):
-        prev_node = spine_list[i - 1]
-        current_node = spine_list[i]
-        path_nodes = []
-        walker = current_node
-        while walker is not None and walker != prev_node:
-            path_nodes.append(walker)
-            walker = parent_map.get(walker)
-        connected_skeleton.update(path_nodes)
-
-    return connected_skeleton
+    return exo
 
 
-def compute_exoskeleton(env: Environment, skeleton_cells: Set[Tuple[int, int]]) -> Set[Tuple[int, int]]:
-    """Build a one-cell-thick exoskeleton around the skeleton."""
-    exoskeleton_cells = set(skeleton_cells)
-    for cell in skeleton_cells:
-        for neighbor in env.grid.neighbors4(cell):
-            if neighbor not in env.grid.occupied and env.grid.in_bounds(neighbor):
-                exoskeleton_cells.add(neighbor)
-    return exoskeleton_cells
+def print_exoskeleton_matrix(env: Environment, exo: Set[Pos]):
+    """
+    Print the resulting configuration.
+    Shows C (core/skeleton), S (shell), and 0 (empty, including center).
+    """
+    occupied = set(env.grid.occupied.keys())
+    all_cells = exo | occupied
+    
+    # Calculate center to highlight it
+    if occupied:
+        min_x_occ = min(x for x, _ in occupied)
+        max_x_occ = max(x for x, _ in occupied)
+        min_y_occ = min(y for _, y in occupied)
+        max_y_occ = max(y for _, y in occupied)
+        center_x = (min_x_occ + max_x_occ) // 2
+        center_y = (min_y_occ + max_y_occ) // 2
+        center_cell = (center_x, center_y)
+    else:
+        center_cell = None
+
+    # Expand bounds to include center if needed
+    all_positions = list(all_cells)
+    if center_cell:
+        all_positions.append(center_cell)
+    
+    if not all_positions:
+        print("Empty configuration")
+        return
+
+    max_x = max(x for x, _ in all_positions)
+    max_y = max(y for _, y in all_positions)
+    min_x = min(x for x, _ in all_positions)
+    min_y = min(y for _, y in all_positions)
+
+    matrix = []
+    for y in range(min_y, max_y + 1):
+        row = ""
+        for x in range(min_x, max_x + 1):
+            pos = (x, y)
+            if center_cell and pos == center_cell:
+                # Highlight center cell (empty by design)
+                row += "0"  # or could use special marker like "·"
+            elif pos in exo and pos in occupied:
+                row += "C"
+            elif pos in exo:
+                row += "S"
+            else:
+                row += "0"
+        matrix.append(row)
+    print("\n".join(matrix))
+    
+    if center_cell:
+        print(f"\nNote: Center cell at ({center_x}, {center_y}) is kept empty for module movement.")

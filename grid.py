@@ -19,12 +19,12 @@ class Grid:
     def is_free(self, p: Pos) -> bool:
         return self.in_bounds(p) and p not in self.occupied
 
-    def place(self, mid: int, p: Pos) -> None:
-        if not self.is_free(p):
-            raise ValueError(f"Cell {p} is not free")
+    def place(self, mid, p):
+        """Helyezzen el egy modult. Ha a cella már foglalt, felülírjuk (vizuális mód)."""
         self.occupied[p] = mid
 
-    def remove(self, p: Pos) -> None:
+    def remove(self, p):
+        """Eltávolít egy modult a cella ból."""
         self.occupied.pop(p, None)
 
     def move(self, mid: int, src: Pos, dst: Pos) -> None:
