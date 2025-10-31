@@ -44,18 +44,28 @@ class RobotUI:
 
         for i, row in enumerate(self.matrix):
             for j, val in enumerate(row):
-                if val == 1:
-                    label = tk.Label(self.root, image=self.robot_img, width=50, height=50)
-                    label.image = self.robot_img  # keep reference
-                else:
-                    label = tk.Label(self.root, bg="lightgray", width=5, height=3)
-                 # Add 1 to row index to account for title row
-                label.grid(row=i+1, column=j, padx=2, pady=2)
-                self.labels.append(label)
+                frame = tk.Frame(self.root, width=44, height=44, padx=2, pady=2, highlightbackground="black", highlightthickness=1)
+                frame.grid(row=i + 1, column=j, padx=1, pady=1)
+                frame.grid_propagate(False)  # fix méret
 
-        # button for calling the next phase
-        next_button = tk.Button(self.root, text="Next Phase", font=("Arial", 12, "bold"), bg="lightgreen", command=self.next_phase)
-        next_button.grid(row=len(self.matrix)+1, column=5, columnspan=2, pady=(5,5))
+                if val == 1:
+                    label = tk.Label(frame, image=self.robot_img)
+                    label.image = self.robot_img
+                    label.pack(expand=True, fill="both")
+                else:
+                    frame.config(bg="lightgray")
+
+                self.labels.append(frame)
+
+        # Next Phase gomb csak egyszer
+        if not hasattr(self, "next_button"):
+            self.next_button = tk.Button(
+                self.root, text="Next Phase", font=("Arial", 12, "bold"),
+                bg="lightgreen", command=self.next_phase
+            )
+            self.next_button.grid(row=len(self.matrix) + 2, column=0, columnspan=len(self.matrix[0]), pady=(5, 5))
+
+
 
     def update_matrix(self, new_matrix):
         self.matrix = new_matrix
@@ -70,7 +80,7 @@ class RobotUI:
         self.phase_num += 1
 
         match self.phase_num:
-            case 1: phase_1.execute_phase(),
+            case 1: phase_1.execute_phase(self),
             case 2: phase_2.execute_phase(),
             case 3: phase_3.execute_phase(),
             case 4: phase_4.execute_phase(),
