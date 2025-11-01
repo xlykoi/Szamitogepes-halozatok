@@ -82,7 +82,7 @@ class RobotUI:
         match self.phase_num:
             case 1: phase_1.execute_phase(self),
             case 2: phase_2.execute_phase(self),
-            case 3: phase_3.execute_phase(),
+            case 3: phase_3.execute_phase(self),
             case 4: phase_4.execute_phase(),
 
         if self.phase_num in phases_dict and self.phase_num < 5:

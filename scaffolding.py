@@ -19,6 +19,9 @@ def compute_scaffolding_from_env(env: Environment, central_cell: Pos) -> Set[Pos
     max_x = max(x for x, _ in occupied)
     min_y = min(y for _, y in occupied)
     max_y = max(y for _, y in occupied)
+    # Align max_y to multiple of 3
+    if (max_y - min_y + 1) % 3 != 0:
+        max_y += 3 - ((max_y - min_y + 1) % 3)
     total_mods = len(occupied)
 
     # Start with rightmost column as vertical scaffolding
