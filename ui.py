@@ -26,13 +26,18 @@ class RobotUI:
         self.title_label = tk.Label(root, text="Sliding Squares in Parallel", font=("Arial", 16, "bold"))
         self.title_label.grid(row=0, column=0,columnspan = 5, sticky="w", padx=5, pady=(10,10))
 
-        # Keep a reference to the robot image
-        self.robot_img = ImageTk.PhotoImage(
-            Image.open("./robot.png").resize((40, 40))
-        )
+        print(f"Length of matrix: {len(matrix)} rows, {len(matrix[0])} columns ")
 
         self.matrix = matrix
         self.labels = []
+
+        # Keep a reference to the robot image
+        if len(self.matrix) <= 7:
+            self.robot_img = ImageTk.PhotoImage(
+            Image.open("./robot.png").resize((40, 40)))
+        else:
+            self.robot_img = ImageTk.PhotoImage(
+                Image.open("./robot.png").resize((40, 40)))
 
         self.draw_matrix()
 
@@ -63,7 +68,7 @@ class RobotUI:
                 self.root, text="Next Phase", font=("Arial", 12, "bold"),
                 bg="lightgreen", command=self.next_phase
             )
-            self.next_button.grid(row=len(self.matrix) + 2, column=0, columnspan=len(self.matrix[0]), pady=(5, 5))
+            self.next_button.grid(row=len(self.matrix) + 2, column=4, columnspan=int(len(self.matrix[0])/2), pady=(5, 5))
 
 
 
@@ -83,7 +88,10 @@ class RobotUI:
             case 1: phase_1.execute_phase(self),
             case 2: phase_2.execute_phase(self),
             case 3: phase_3.execute_phase(self),
-            case 4: phase_4.execute_phase(),
+            case 4: phase_4.execute_phase(self),
+
+        if self.phase_num == 4:
+            self.next_button.destroy()
 
         if self.phase_num in phases_dict and self.phase_num < 5:
             self.update_phase_label(phases_dict[self.phase_num])
