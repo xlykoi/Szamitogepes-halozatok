@@ -94,27 +94,42 @@ def compute_xy_monotonous_histogram_from_environment(env: Environment) -> dict:
 
     # fill in the missing centers with the leftover robots that are not neighbors
     counter = len(missing_centers)
+    robots_to_fill_centers = []
+    
+    # First, identify which robots will fill centers (don't modify while iterating)
     for robot in left_over_robots:
         if robot not in neighbors:
+            robots_to_fill_centers.append(robot)
+    
+    # Now fill the missing centers
+    for robot in robots_to_fill_centers:
+        if counter == 0:
+            break
+        if robot in occupied:  # Safety check: ensure robot still exists
             print(f"Moving robot {robot} to fill missing center.")
             occupied.remove(robot)
-            left_over_robots.remove(robot)
+            if robot in left_over_robots:
+                left_over_robots.remove(robot)
             occupied.add(missing_centers[0])
             counter -= 1
             print(f"Filled missing center at {missing_centers[0]}")
             print(str(counter))
             missing_centers.pop(0)
-            if counter == 0:
-                break
 
+    # Fill missing neighbors with remaining leftover robots
     missing_neighbor_count = len(missing_neigbors)
-    for robot in left_over_robots:
-        if robot not in neighbors:
-
-            for i in range(0, missing_neighbor_count):
+    neighbor_idx = 0
+    
+    for robot in left_over_robots[:]:  # Use slice copy to avoid modification issues
+        if robot not in neighbors and robot in occupied:  # Check robot still exists
+            if neighbor_idx < missing_neighbor_count:
+                print(f"Moving robot {robot} to fill missing neighbor at {missing_neigbors[neighbor_idx]}")
                 occupied.remove(robot)
-                occupied.add(missing_neigbors[i])
-                print(f"Filling missing neighbor at {missing_neigbors[i]}")
+                occupied.add(missing_neigbors[neighbor_idx])
+                print(f"Filled missing neighbor at {missing_neigbors[neighbor_idx]}")
+                neighbor_idx += 1
+            else:
+                break  
 
     return occupied
 
