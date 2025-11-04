@@ -1,5 +1,65 @@
 from environment import Environment
-import math
+
+class Metamodule:
+    def __init__(self, center: dict, elements: list):
+        self.center = center  # center is a dict with 'x' and 'y' keys
+        elements.remove(center)
+        self.elements = elements  # elements is a list of dicts with 'x' and 'y' keys
+
+    def print_info(self):
+        print(f"Metamodule Center: ({self.center[0]}, {self.center[1]})")
+        print("Elements:")
+        for elem in self.elements:
+            print(f" - ({elem[0]}, {elem[1]})")
+
+    def move_module(self, new_center: dict):
+        old_x, old_y = self.center
+        new_x, new_y = new_center
+
+        # Calculate translation offset
+        dx = new_x - old_x
+        dy = new_y - old_y
+
+        # Move all elements by that offset
+        moved_elements = [(x + dx, y + dy) for (x, y) in self.elements]
+
+        # Update internal state
+        self.center = new_center
+        self.elements = moved_elements
+
+def searching_metamodules(min_x, max_x, min_y, max_y, occupied, left_over_robots,
+                        stable_metamodule_center_coordinates, neighbors, missing_neigbors, metamodules):
+
+    # deciding which leftover robots to move to the missing centers
+    for x in range(min_x+3, max_x+1):
+        for y in range(min_y, max_y+1):
+
+            # potential center of future metamodule
+            if (x % 3 == 1) and (y % 3 == 1):
+                if (x, y) in left_over_robots:
+                    print(f"x: {x}, y: {y} is a potential center")
+                    count = 0
+
+                    # Count all 3x3 neighbors (including diagonals)
+                    for dx in (-1, 0, 1):
+                        for dy in (-1, 0, 1):
+
+                            nx, ny = x + dx, y + dy
+                            if (nx, ny) in occupied:
+                                neighbors.append((nx, ny))
+                                print("Neighbor found at: ", (nx, ny))
+                                count += 1
+                            else:
+                                missing_neigbors.append((nx, ny))
+                                print("Missing neighbor at: ", (nx, ny))
+
+                    if len(neighbors) == 9:
+                        metamodule = Metamodule((x,y), neighbors)
+                        metamodule.print_info()
+                        metamodules.append(metamodule)
+                    stable_metamodule_center_coordinates[(x, y)] = count
+
+    return stable_metamodule_center_coordinates, neighbors, missing_neigbors, metamodules
 
 def compute_xy_monotonous_histogram_from_environment(env: Environment) -> dict:
     """
@@ -8,6 +68,7 @@ def compute_xy_monotonous_histogram_from_environment(env: Environment) -> dict:
     that got created from the Sweepying process in Phase 3.
     Updates env.grid.occupied.
     """
+    metamodules = []
 
     occupied = set(env.grid.occupied.keys())
     if not occupied:
@@ -59,31 +120,10 @@ def compute_xy_monotonous_histogram_from_environment(env: Environment) -> dict:
     stable_metamodule_center_coordinates = {}
     neighbors = []
     missing_neigbors = []
-    # deciding which leftover robots to move to the missing centers
-    for x in range(min_x+3, max_x+1):
-        for y in range(min_y, max_y+1):
 
-            # potential center of future metamodule
-            if (x % 3 == 1) and (y % 3 == 1):
-                if (x, y) in left_over_robots:
-                    print(f"x: {x}, y: {y} is a potential center")
-                    count = 0
-
-                    # Count all 3x3 neighbors (including diagonals)
-                    for dx in (-1, 0, 1):
-                        for dy in (-1, 0, 1):
-
-                            nx, ny = x + dx, y + dy
-                            if (nx, ny) in occupied:
-                                neighbors.append((nx, ny))
-                                print("Neighbor found at: ", (nx, ny))
-                                count += 1
-                            else:
-                                missing_neigbors.append((nx, ny))
-                                print("Missing neighbor at: ", (nx, ny))
-
-
-                    stable_metamodule_center_coordinates[(x, y)] = count
+    stable_metamodule_center_coordinates, neighbors, missing_neigbors, metamodules = searching_metamodules(min_x, max_x, min_y, max_y, occupied,
+                                                                        left_over_robots, stable_metamodule_center_coordinates,
+                                                                        neighbors, missing_neigbors, metamodules)
 
 
     for (x, y), count in stable_metamodule_center_coordinates.items():
@@ -108,13 +148,26 @@ def compute_xy_monotonous_histogram_from_environment(env: Environment) -> dict:
                 break
 
     missing_neighbor_count = len(missing_neigbors)
+    still_missing_counter = missing_neighbor_count
+    print(f"occupied list: {occupied}")
     for robot in left_over_robots:
         if robot not in neighbors:
 
-            for i in range(0, missing_neighbor_count):
+            print(f"this robot will be moved: {robot}")
+            if still_missing_counter > 0:
+                occupied.add(missing_neigbors[still_missing_counter-1])
+                print(f"still_missing_counter: {still_missing_counter}")
+                still_missing_counter -= 1
                 occupied.remove(robot)
-                occupied.add(missing_neigbors[i])
-                print(f"Filling missing neighbor at {missing_neigbors[i]}")
+            else:
+                print("No more neighbors to fill.")
+                break
+
+    # mintha nem adna hozza uj metamodulet
+    stable_metamodule_center_coordinates, neighbors, missing_neigbors, metamodules = searching_metamodules(min_x, max_x, min_y, max_y, occupied,
+                                                                        left_over_robots, stable_metamodule_center_coordinates,
+                                                                        neighbors, missing_neigbors, metamodules)
+            
 
     return occupied
 
