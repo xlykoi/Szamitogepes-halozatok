@@ -131,5 +131,45 @@ def compute_xy_monotonous_histogram_from_environment(env: Environment) -> dict:
             else:
                 break  
 
+    left_over_robots_final = []
+
+    for x in range(min_x+3, max_x+1):
+        for y in range(min_y, max_y+1):
+            pos = (x, y)
+            if pos in occupied:
+                left_over_robots_final.append(pos)
+
+    # --------------------------
+    # Find min and max y boundaries of the occupied space
+    min_y = min(y for _, y in occupied)
+    max_y = max(y for _, y in occupied)
+
+    # Check if any robot is already at the top or bottom
+    touches_top_or_bottom = any(y == min_y or y == max_y for _, y in left_over_robots_final)
+
+    if not touches_top_or_bottom and left_over_robots_final:
+        # Find how far down we can move without exceeding bottom
+        current_max_y = max(y for _, y in left_over_robots_final)
+        dy = max_y - current_max_y  # how much to move down
+        
+        if dy > 0:
+            moved_robots = []
+            for (x, y) in left_over_robots_final:
+                new_pos = (x, y + dy)
+                moved_robots.append(new_pos)
+                # update environment if necessary
+                if (x, y) in occupied:
+                    occupied.remove((x, y))
+                occupied.add(new_pos)
+
+            # Update the list
+            left_over_robots_final = moved_robots
+            print(f"Moved {len(moved_robots)} robots down by {dy} to bottom (y={max_y}).")
+    else:
+        print("Robots already touch top or bottom edge — no move needed.")
+
+
+
+
     return occupied
 
