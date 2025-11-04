@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Callable, List, Optional, Sequence, Tuple
-from module import Module
+from .module import Module
 
 @dataclass
 class MetaModule:

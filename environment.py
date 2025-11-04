@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple
 import collections
 from grid import Grid
-from module import Module, Move
+from sturctures.module import Module, Move
 from collision import detect_collisions   
 
 Pos = Tuple[int, int]

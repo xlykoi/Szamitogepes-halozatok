@@ -1,6 +1,6 @@
 
 from environment import Environment
-from module import Module
+from sturctures.module import Module
 from xy_monotonous_histogram import compute_xy_monotonous_histogram_from_environment
 
 def execute_phase(ui=None):

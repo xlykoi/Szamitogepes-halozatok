@@ -33,3 +33,4 @@ class Move(Enum):
     @property
     def delta(self):
         return self.value
+

@@ -1,6 +1,5 @@
 from environment import Environment
-from module import Module
-from scaffolding import compute_scaffolding_from_env  # a Phase 3 
+from sturctures.module import Module
 from sweep import compute_histogram_from_environment
 
 def execute_phase(ui=None):

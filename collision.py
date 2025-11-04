@@ -1,5 +1,5 @@
 # collision.py
-from module import Move
+from sturctures.module import Move
 from typing import Dict, Tuple, List
 Pos = Tuple[int,int]
 
