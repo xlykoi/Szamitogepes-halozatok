@@ -1,6 +1,6 @@
 from environment import Environment
-from sturctures.module import Module
-from sturctures.scaffolding import compute_scaffolding_from_env  # a Phase 2 logikája
+from structures.module import Module
+from structures.scaffolding import compute_scaffolding_from_env  # a Phase 2 logikája
 
 def execute_phase(ui=None):
     print("Executing Phase 2: Building Scaffolding")

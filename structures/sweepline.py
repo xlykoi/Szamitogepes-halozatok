@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Callable, List, Optional, Sequence, Tuple
-from metamodule import MetaModule
+from typing import List
+from .metamodule import MetaModule
 
 @dataclass
 class SweepLine:
@@ -26,10 +26,10 @@ class SweepLine:
         return True
             
     """Check if the Sweepline is a separator."""
-    def is_separator(self) -> bool:
+    def is_separator(self, env) -> bool:
         """Check if all metamodules are separators."""
         for metamodule in self.metamodules:
-            if not metamodule.is_separator():
+            if not metamodule.is_separator(env):
                 return False
         return True
     
@@ -48,3 +48,34 @@ class SweepLine:
             if not metamodule.is_clean():
                 return False
         return True
+    
+    def full_diagnostic(self, env) -> None:
+        print(f"SweepLine at x={self.x}:")
+        print(f"  Valid: {self.is_valid()}")
+        print(f"  Separator: {self.is_separator(env)}")
+        print(f"  Solid: {self.is_solid()}")
+        print(f"  Clean: {self.is_clean()}")
+        for metamodule in self.metamodules:
+            metamodule.full_diagnostic(env)
+
+    def clean(self, env, ui) -> None:
+        #Clean leading metamodules first
+        for i, metamodule in enumerate(self.metamodules):
+            if i % 2 == 0:
+                metamodule.clean(env, ui)
+        
+        #Clean trailing metamodules second
+        for i, metamodule in enumerate(self.metamodules):
+            if i % 2 == 1:
+                metamodule.clean(env, ui)
+
+    def advance(self, env, ui) -> None:
+        #Advance leading metamodules first
+        for i, metamodule in enumerate(self.metamodules):
+            if i % 2 == 0:
+                metamodule.advance(env, ui)
+        
+        #Advance trailing metamodules second
+        for i, metamodule in enumerate(self.metamodules):
+            if i % 2 == 1:
+                metamodule.advance(env, ui)

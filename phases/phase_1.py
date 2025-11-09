@@ -1,6 +1,6 @@
 from environment import Environment
-from sturctures.module import Module
-from sturctures.skeleton import compute_exoskeleton_from_env
+from structures.module import Module
+from structures.skeleton import compute_exoskeleton_from_env
 
 def execute_phase(ui=None):
     print("Executing Phase 1: Building Exoskeleton")

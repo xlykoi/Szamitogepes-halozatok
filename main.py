@@ -13,6 +13,7 @@ if __name__ == "__main__":
 
     # matrix contains the default_config as a list
     matrix = load_matrix_from_file()
-    app = RobotUI(root, matrix)
+    stub_matrix = load_matrix_from_file("stub_phase3_matrix.txt")
+    app = RobotUI(root, matrix, stub_matrix)
 
     root.mainloop()

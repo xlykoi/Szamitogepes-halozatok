@@ -2,6 +2,21 @@
 from dataclasses import dataclass
 from enum import Enum
 
+class Move(Enum):
+    STAY = (0, 0)
+    NORTH = (0, 1)
+    SOUTH = (0, -1)
+    WEST = (-1, 0)
+    EAST = (1, 0)
+    NORTHWEST = (-1, 1)
+    NORTHEAST = (1, 1)
+    SOUTHWEST = (-1, -1)
+    SOUTHEAST = (1, -1)
+
+    @property
+    def delta(self):
+        return self.value
+
 @dataclass
 class Module:
     id: int
@@ -23,14 +38,7 @@ class Module:
         self.pos = new_pos
 
 
-class Move(Enum):
-    STAY = (0, 0)
-    UP = (0, 1)
-    DOWN = (0, -1)
-    LEFT = (-1, 0)
-    RIGHT = (1, 0)
-
-    @property
-    def delta(self):
-        return self.value
-
+    def move(self, move: Move, env):
+        dx, dy = move.delta
+        new_pos = (self.pos[0] + dx, self.pos[1] + dy)
+        self.move_to(new_pos, env)

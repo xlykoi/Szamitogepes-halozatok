@@ -16,9 +16,10 @@ phases_dict = {
 
 class RobotUI:
 
-    def __init__(self, root, matrix,  phase_num=0):
+    def __init__(self, root, matrix, stub_matrix, phase_num=0):
         self.root = root
         self.root.title("Sliding Squares in Parallel Demonstrator Program")
+        self.stub_matrix = stub_matrix
 
         self.phase_num = phase_num
 
@@ -69,6 +70,14 @@ class RobotUI:
                 bg="lightgreen", command=self.next_phase
             )
             self.next_button.grid(row=len(self.matrix) + 2, column=4, columnspan=int(len(self.matrix[0])/2), pady=(5, 5))
+        
+        # Nxt Step gomb csak egyszer
+        if not hasattr(self, "next_step_button"):
+            self.next_step_button = tk.Button(
+                self.root, text="Next Step", font=("Arial", 12, "bold"),
+                bg="lightgreen", command=self.next_step
+            )
+            self.next_step_button.grid(row=len(self.matrix) + 2, column=1, columnspan=int(len(self.matrix[0])/2), pady=(5, 5))
 
 
 
@@ -79,6 +88,18 @@ class RobotUI:
     def update_phase_label(self, text):
         self.title_label.config(text=text)
 
+    def next_step(self):
+        match self.phase_num:
+            case 0:
+                print('No step implemented for phase 1')
+            case 1:
+                print('No step implemented for phase 2')
+            case 2:
+                phase_3.execute_step(self)
+            case 3:
+                print('No step implemented for phase 4')
+                
+
     def next_phase(self):
         global phases_dict
 
@@ -88,7 +109,10 @@ class RobotUI:
             case 1:
                 phase_1.execute_phase(self)
             case 2:
-                phase_2.execute_phase(self)
+                # phase_2.execute_phase(self)
+                self.update_matrix(self.stub_matrix)
+                self.update_phase_label("Phase 2: Scaffolding Constructed")
+                print("Phase 2 completed successfully.")
             case 3:
                 phase_3.execute_phase(self)
             case 4:
