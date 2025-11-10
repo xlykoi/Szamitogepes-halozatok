@@ -168,14 +168,377 @@ class MetaModule:
         
 
 
-    def advance(self, env, ui, env_queue) -> None:
+    def advance(self, env, ui, movement_dict_queue, leading) -> None:
         # Advance the metamodule one step to the left
         # Check for obscuring modules W1, W2, W3
         W1 = env.find_module_at((self.x - 2, self.y + 1))
         W2 = env.find_module_at((self.x - 2, self.y))
         W3 = env.find_module_at((self.x - 2, self.y - 1))
 
-        # Advance based on which of W1, W2, and W3 are present
+        if leading:
+            # Advance based on which of W1, W2, and W3 are present
+            if W1 == W2 == W3 == None:
+                # a) step 1
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.SOUTHWEST
+                movement_dict[self.modules[0][1].id] = Move.SOUTHWEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # a) step 2
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.NORTHWEST
+                movement_dict[self.modules[2][1].id] = Move.NORTHWEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # a) step 3
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.WEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # a) step 4
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.NORTHWEST
+                movement_dict[self.modules[2][2].id] = Move.WEST
+                movement_dict_queue[3].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # a) step 5
+                movement_dict = {}
+                movement_dict[self.modules[0][2].id] = Move.SOUTHWEST
+                movement_dict_queue[4].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W2 == W3 == None and W1 != None:
+                # b) step 1
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.WEST
+                movement_dict[self.modules[0][1].id] = Move.SOUTHWEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # b) step 2
+                movement_dict = {}
+                movement_dict[self.modules[2][0].id] = Move.WEST
+                movement_dict[self.modules[2][1].id] = Move.WEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # b) step 3
+                movement_dict = {}
+                movement_dict[self.modules[0][2].id] = Move.WEST
+                movement_dict[self.modules[1][2].id] = Move.SOUTHWEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # b) step 4
+                movement_dict = {}
+                movement_dict[self.modules[2][2].id] = Move.NORTHWEST
+                movement_dict_queue[3].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 == W3 == None and W2 != None:
+                # b) step 1
+                movement_dict = {}
+                movement_dict[self.modules[0][0].id] = Move.WEST
+                movement_dict[self.modules[0][1].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # b) step 2
+                movement_dict = {}
+                movement_dict[self.modules[2][0].id] = Move.WEST
+                movement_dict[self.modules[2][1].id] = Move.WEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # b) step 3
+                movement_dict = {}
+                movement_dict[self.modules[0][2].id] = Move.WEST
+                movement_dict[self.modules[1][2].id] = Move.SOUTHWEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # b) step 4
+                movement_dict = {}
+                movement_dict[self.modules[2][2].id] = Move.NORTHWEST
+                movement_dict_queue[3].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 == W2 == None and W3 != None:
+                # b) step 1
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.WEST
+                movement_dict[self.modules[2][1].id] = Move.NORTHWEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # b) step 2
+                movement_dict = {}
+                movement_dict[self.modules[2][0].id] = Move.WEST
+                movement_dict[self.modules[2][1].id] = Move.WEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # b) step 3
+                movement_dict = {}
+                movement_dict[self.modules[0][2].id] = Move.WEST
+                movement_dict[self.modules[1][2].id] = Move.SOUTHWEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # b) step 4
+                movement_dict = {}
+                movement_dict[self.modules[2][2].id] = Move.NORTHWEST
+                movement_dict_queue[3].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 == None and W2 != None and W3 != None:
+                # c) step 1
+                movement_dict = {}
+                movement_dict[self.modules[0][0].id] = Move.WEST
+                movement_dict[self.modules[0][1].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # c) step 2
+                movement_dict = {}
+                movement_dict[self.modules[0][2].id] = Move.WEST
+                movement_dict[self.modules[1][2].id] = Move.WEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 != None and W2 == None and W3 != None:
+                # c) step 1
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.WEST
+                movement_dict[self.modules[2][1].id] = Move.NORTHWEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # c) step 2
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.WEST
+                movement_dict[self.modules[2][2].id] = Move.WEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 != None and W2 != None and W3 == None:
+                # c) step 1
+                movement_dict = {}
+                movement_dict[self.modules[2][0].id] = Move.WEST
+                movement_dict[self.modules[2][1].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # c) step 2
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.WEST
+                movement_dict[self.modules[2][2].id] = Move.WEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 != None and W2 != None and W3 != None:
+                # d) step 1
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+        if not leading:
+            if W1 == W2 == W3 == None:
+                # a*) step 1
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.SOUTHWEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # a*) step 2
+                movement_dict = {}
+                movement_dict[self.modules[0][0].id] = Move.WEST
+                movement_dict[self.modules[2][0].id] = Move.NORTHWEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # a*) step 3
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.WEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # a*) step 4
+                movement_dict = {}
+                movement_dict[self.modules[1][1].id] = Move.NORTHWEST
+                movement_dict[self.modules[2][2].id] = Move.NORTHWEST
+                movement_dict_queue[3].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # a*) step 5
+                movement_dict = {}
+                movement_dict[self.modules[0][2].id] = Move.SOUTHWEST
+                movement_dict[self.modules[1][1].id] = Move.SOUTHWEST
+                movement_dict_queue[4].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 != None and W2 == W3 == None:
+                # e) step 1
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.WEST
+                movement_dict[self.modules[2][0].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 2
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.WEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 3
+                movement_dict = {}
+                movement_dict[self.modules[1][1].id] = Move.SOUTHWEST
+                movement_dict[self.modules[2][2].id] = Move.NORTHWEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 4
+                movement_dict = {}
+                movement_dict[self.modules[1][1].id] = Move.WEST
+                movement_dict[self.modules[0][2].id] = Move.SOUTHWEST
+                movement_dict_queue[3].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 == None and W2 != W3 == None:
+                # e) step 1
+                movement_dict = {}
+                movement_dict[self.modules[0][0].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 2
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.NORTH
+                movement_dict[self.modules[2][0].id] = Move.WEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 3
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.WEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 4
+                movement_dict = {}
+                movement_dict[self.modules[1][1].id] = Move.SOUTHWEST
+                movement_dict[self.modules[2][2].id] = Move.NORTHWEST
+                movement_dict_queue[3].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 5
+                movement_dict = {}
+                movement_dict[self.modules[1][1].id] = Move.WEST
+                movement_dict[self.modules[0][2].id] = Move.SOUTHWEST
+                movement_dict_queue[4].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 == W2 == None and W3 != None:
+                # e) step 1
+                movement_dict = {}
+                movement_dict[self.modules[0][0].id] = Move.WEST
+                movement_dict[self.modules[1][0].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 2
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.WEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 3
+                movement_dict = {}
+                movement_dict[self.modules[1][1].id] = Move.NORTHWEST
+                movement_dict[self.modules[2][2].id] = Move.NORTHWEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # e) step 4
+                movement_dict = {}
+                movement_dict[self.modules[1][1].id] = Move.WEST
+                movement_dict[self.modules[0][2].id] = Move.SOUTHWEST
+                movement_dict_queue[3].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 != W2 == None != W3:
+                # f) step 1
+                movement_dict = {}
+                movement_dict[self.modules[1][0].id] = Move.WEST
+                movement_dict[self.modules[2][1].id] = Move.NORTHWEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # f) step 2
+                movement_dict = {}
+                movement_dict[self.modules[2][2].id] = Move.NORTHWEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # f) step 3
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.SOUTHWEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 != None and W2 != W3 == None:
+                # f) step 1
+                movement_dict = {}
+                movement_dict[self.modules[2][0].id] = Move.WEST
+                movement_dict[self.modules[2][1].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # f) step 2
+                movement_dict = {}
+                movement_dict[self.modules[2][2].id] = Move.NORTHWEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # f) step 3
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.SOUTHWEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 == None != W2 and W3 != None:
+                # f) step 1
+                movement_dict = {}
+                movement_dict[self.modules[0][0].id] = Move.WEST
+                movement_dict[self.modules[0][1].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # f) step 2
+                movement_dict = {}
+                movement_dict[self.modules[0][2].id] = Move.SOUTHWEST
+                movement_dict_queue[1].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+                # f) step 3
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.NORTHWEST
+                movement_dict_queue[2].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
+            if W1 != None and W2 != None and W3 != None:
+                # f) step 1
+                movement_dict = {}
+                movement_dict[self.modules[1][2].id] = Move.WEST
+                movement_dict_queue[0].update(deepcopy(movement_dict))
+                self = MetaModule(self.x, self.y, env)
+
 
         # Remake metamodule after shifting it around
         self = MetaModule(self.x, self.y, env)

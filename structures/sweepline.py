@@ -86,11 +86,21 @@ class SweepLine:
 
     def advance(self, env, ui, env_queue) -> None:
         #Advance leading metamodules first
+        movement_dict_queue = [{}, {}, {}, {}, {}]
         for i, metamodule in enumerate(self.metamodules):
             if i % 2 == 0:
-                metamodule.advance(env, ui, env_queue)
+                metamodule.advance(env, ui, movement_dict_queue, True)
+
+        for movement_dict in movement_dict_queue:
+            if movement_dict != {}:
+                env_queue.append(deepcopy(env.transformation(movement_dict, ui)))
 
         #Advance trailing metamodules second
+        movement_dict_queue = [{}, {}, {}, {}, {}]
         for i, metamodule in enumerate(self.metamodules):
             if i % 2 == 1:
-                metamodule.advance(env, ui, env_queue)
+                metamodule.advance(env, ui, movement_dict_queue, False)
+
+        for movement_dict in movement_dict_queue:
+            if movement_dict != {}:
+                env_queue.append(deepcopy(env.transformation(movement_dict, ui)))
