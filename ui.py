@@ -1,6 +1,9 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from phases import (phase_1, phase_2, phase_3, phase_4)
+from phases.phase_3 import Phase_3
+from structures.module import Module
+from typing import List
 
 # one of the attributes of the RobotUI class is the phase_num, 
 # which contains the current phase the ui (and the algorithm) is in
@@ -22,6 +25,8 @@ class RobotUI:
         self.stub_matrix = stub_matrix
 
         self.phase_num = phase_num
+
+        self.phase_3 = None
 
         # Title label
         self.title_label = tk.Label(root, text="Sliding Squares in Parallel", font=("Arial", 16, "bold"))
@@ -80,7 +85,6 @@ class RobotUI:
             self.next_step_button.grid(row=len(self.matrix) + 2, column=1, columnspan=int(len(self.matrix[0])/2), pady=(5, 5))
 
 
-
     def update_matrix(self, new_matrix):
         self.matrix = new_matrix
         self.draw_matrix()
@@ -95,7 +99,9 @@ class RobotUI:
             case 1:
                 print('No step implemented for phase 2')
             case 2:
-                phase_3.execute_step(self)
+                if not self.phase_3:
+                    self.phase_3 = Phase_3(self)
+                self.phase_3.execute_step()
             case 3:
                 print('No step implemented for phase 4')
                 
@@ -114,7 +120,9 @@ class RobotUI:
                 self.update_phase_label("Phase 2: Scaffolding Constructed")
                 print("Phase 2 completed successfully.")
             case 3:
-                phase_3.execute_phase(self)
+                if not self.phase_3:
+                    self.phase_3 = Phase_3(self)
+                self.phase_3.execute_phase()
             case 4:
                 phase_4.execute_phase(self)
 

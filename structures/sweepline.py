@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 from .metamodule import MetaModule
+from copy import deepcopy
 
 @dataclass
 class SweepLine:
@@ -58,24 +59,38 @@ class SweepLine:
         for metamodule in self.metamodules:
             metamodule.full_diagnostic(env)
 
-    def clean(self, env, ui) -> None:
+    def clean(self, env, ui, env_queue) -> None:
+        movement_dict_queue = [{}, {}]
         #Clean leading metamodules first
-        for i, metamodule in enumerate(self.metamodules):
+        for i, metamodule in enumerate(reversed(self.metamodules)):
             if i % 2 == 0:
-                metamodule.clean(env, ui)
-        
-        #Clean trailing metamodules second
-        for i, metamodule in enumerate(self.metamodules):
-            if i % 2 == 1:
-                metamodule.clean(env, ui)
+                metamodule.clean(env, ui, movement_dict_queue)
 
-    def advance(self, env, ui) -> None:
+        for movement_dict in movement_dict_queue:
+            if movement_dict != {}:
+                env_queue.append(deepcopy(env.transformation(movement_dict, ui)))
+        
+        movement_dict_queue = [{}, {}]
+        #Clean trailing metamodules second
+        for i, metamodule in enumerate(reversed(self.metamodules)):
+            if i % 2 == 1:
+                metamodule.clean(env, ui, movement_dict_queue)
+
+        for movement_dict in movement_dict_queue:
+            if movement_dict != {}:
+                env_queue.append(deepcopy(env.transformation(movement_dict, ui)))
+
+        # Check if sweepline if valid and clean after 
+        print('Sweepline valid: ', self.is_valid())
+        print('SweepLine clean: ', self.is_clean())
+
+    def advance(self, env, ui, env_queue) -> None:
         #Advance leading metamodules first
         for i, metamodule in enumerate(self.metamodules):
             if i % 2 == 0:
-                metamodule.advance(env, ui)
-        
+                metamodule.advance(env, ui, env_queue)
+
         #Advance trailing metamodules second
         for i, metamodule in enumerate(self.metamodules):
             if i % 2 == 1:
-                metamodule.advance(env, ui)
+                metamodule.advance(env, ui, env_queue)

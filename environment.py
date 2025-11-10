@@ -80,6 +80,7 @@ class Environment:
         return matrix
     
     def transformation(self, movement_dict: Dict[int, Move], ui):
+        print("Executing Step in Phase 3")
         modules_to_move = {}
         for id in movement_dict.keys():
             modules_to_move[id] = self.modules[id]
@@ -92,4 +93,5 @@ class Environment:
             self.grid.place(id, new_pos)
             self.pos = new_pos
 
-        ui.update_matrix(self.matrix_from_environment())
+        return self
+        
