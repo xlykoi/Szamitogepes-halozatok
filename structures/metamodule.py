@@ -75,7 +75,7 @@ class MetaModule:
         center_module = self.modules[1][1]
         if center_module is None:
             return
-        
+
         # Gather modules in the west strip of the metamodule
         west_strip_modules = []
         for module in env.modules.values():
@@ -84,18 +84,28 @@ class MetaModule:
                 west_strip_modules.append(module)
 
         west_strip_rows = [[],[],[]]
-        for x in range(self.x - 2, -1, -1):
+        for x in reversed(range(self.x - 1)):
             module = env.find_module_at((x, self.y + 1))
             if module:
                 west_strip_rows[0].append(module)
+            else:
+                break
 
+        for x in reversed(range(self.x - 1)):
             module = env.find_module_at((x, self.y))
             if module:
-                west_strip_rows[1].append(module)   
+                west_strip_rows[1].append(module)  
+            else:
+                break 
             
+        for x in reversed(range(self.x - 1)):
             module = env.find_module_at((x, self.y - 1))
             if module:
                 west_strip_rows[2].append(module)
+            else:
+                break
+
+        print(west_strip_rows)
 
         # a) Trivial case: Push row 2 to the left   
         if len(west_strip_rows[0]) > len(west_strip_rows[1]) <= len(west_strip_rows[2]):
