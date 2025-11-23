@@ -17,10 +17,24 @@ class Move(Enum):
     def delta(self):
         return self.value
 
+from dataclasses import dataclass, field
+
 @dataclass
 class Module:
     id: int
-    pos: tuple[int, int]
+    _pos: tuple[int, int] = field(repr=False)
+
+    def __post_init__(self):
+        self.pos = self._pos  # Initialize using the property setter
+
+    @property
+    def pos(self):
+        return self._pos
+
+    @pos.setter
+    def pos(self, value: tuple[int, int]):
+        self._pos = value
+        print(f'Module {self.id} pos changed to {self._pos}')    
 
     def move_to(self, new_pos: tuple[int, int], env):
         """Közvetlenül áthelyezi a modult a megadott pozícióba."""

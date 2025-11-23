@@ -10,36 +10,54 @@ class Phase_3:
         self.ui = ui
         self.step_count = 0
         self.env_queue: List[Environment] = []
+        self.env, mid = self.build_env_from_ui()
+
+    # --- 1) Find Sweep Line
+        xs=[]
+        ys=[]
+        for module in self.env.modules.values():
+            xs.append(module.pos[0])
+            ys.append(module.pos[1])
+        
+        self.sweep_line = None
 
     def execute_step(self):
+        print("Executing Step in Phase 3")
         if len(self.env_queue) == 0:
-            env, mid = self.build_env_from_ui()
-            
-            # --- 1) Find Sweep Line
-            occupied = set(env.grid.occupied.keys())
-            if not occupied:
-                return set()
-            
-            """Extended bounding box"""
-            min_x = min(x for x, _ in occupied)
-            max_x = max(x for x, _ in occupied)
-            min_y = min(y for _, y in occupied)
-            max_y = max(y for _, y in occupied)
-            sweep_line_x = max_x - 1
-
+            min_x, max_x, min_y, max_y = self.env.find_bounds()
             metamodules: List[MetaModule] = []
             for y in range(min_y, max_y):
                 if (y - min_y) % 3 == 1:
-                    metamodules.append(MetaModule(sweep_line_x, y, env))
-                    
-            sweep_line = SweepLine(sweep_line_x, metamodules)
-
+                    if self.sweep_line == None:
+                        metamodules.append(MetaModule(max_x - 1, y, self.env))
+                    else:
+                        metamodules.append(MetaModule(self.sweep_line.x - 1, y, self.env))
+            if self.sweep_line == None:
+                self.sweep_line = SweepLine(max_x - 1, metamodules)
+            else:
+                self.sweep_line = SweepLine(self.sweep_line.x - 1, metamodules)
             #sweep_line.full_diagnostic(env)
+            print('calculations...')
+            done = self.sweep_line.clean(self.env, self.env_queue)
+            print('---Sweep Line Cleaned---')
+            print('done? ', done)
+            
+            clean_metamodules = []
+            if len(self.env_queue) != 0:
+                for metamodule in self.sweep_line.metamodules:
+                    clean_x = metamodule.x
+                    clean_metamodules.append(MetaModule(metamodule.x, metamodule.y, self.env_queue[-1]))
 
-            sweep_line.clean(env, self.ui, self.env_queue)
-            sweep_line.advance(env, self.ui, self.env_queue)
+                self.sweep_line = SweepLine(clean_x, clean_metamodules)
+                self.sweep_line.full_diagnostic(self.env_queue[-1])
+            
+            
+            self.sweep_line.advance(self.env, self.env_queue)
+            print('---Sweep Line Advanced---')
 
+        # Update sweepline and metamodule positions after moving with advance
         env_to_display = self.env_queue.pop(0)
+        self.env = env_to_display
         self.ui.update_matrix(env_to_display.matrix_from_environment())
 
     def execute_phase(self):
@@ -81,6 +99,7 @@ class Phase_3:
         # --- 1) Read matrix from UI
         matrix = self.ui.matrix
         rows, cols = len(matrix), len(matrix[0])
+
 
         # --- 2) Build environment
         env = Environment()

@@ -45,3 +45,29 @@ class Grid:
             for dy in (-1, 0, 1)
             if not (dx == 0 and dy == 0)
         ]
+
+    def print_occupied_matrix(self):
+        matrix = []
+
+        occupied = set(self.occupied.keys())
+        min_x = min(x for x, _ in occupied)
+        max_x = max(x for x, _ in occupied)
+        min_y = min(y for _, y in occupied)
+        max_y = max(y for _, y in occupied)
+
+        rows = max_y - min_y + 1
+        columns = max_x - min_x + 1
+
+        for y in range(rows):
+            matrix.append([])
+            for x in range(columns):
+                matrix[y].append('-')
+        
+        for pos, id in self.occupied.items():
+            matrix[-(pos[1]-1)][pos[0]-1] = id
+            
+        for row in matrix:
+            for id in row:
+                print(id, end='\t')
+            print('')
+

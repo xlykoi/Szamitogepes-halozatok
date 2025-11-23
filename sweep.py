@@ -52,7 +52,6 @@ def compute_histogram_from_environment(env: Environment) -> dict:
     if total_missing > 0:
         print("Error: Not enough modules to build full histogram.")
         return
-    print(missing_modules)
     """Adjust histogram to account for missing modules"""
     for eastern_strip in range(strip_range):
         if missing_modules[eastern_strip] > 0 and eastern_strip + 1 in missing_modules.keys():

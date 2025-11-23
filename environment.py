@@ -18,6 +18,8 @@ class Environment:
         self.modules[module.id] = module
         self.grid.place(module.id, module.pos)
 
+    
+
     def step(self, actions: Dict[int, Move]) -> bool:
         if not actions:
             return True
@@ -48,50 +50,71 @@ class Environment:
         return True
 
     def find_module_at(self, pos: Pos) -> Optional[Module]:
+        min_x, max_x, min_y, max_y = self.find_bounds()
+        if pos[0] < min_x or pos[0] > max_x or pos[1] < min_y or pos[1] > max_y:
+            print(pos, 'out of bounds')
+            return None
         # accept list or tuple, normalize to tuple key for dict lookup
-        try:
-            key = tuple(pos)
-        except TypeError:
-            key = pos
-        mid = self.grid.occupied.get(key)
-        if mid is not None:
-            return self.modules.get(mid)
+        for module in self.modules.values():
+            if module.pos[0] == pos[0] and module.pos[1] == pos[1]:
+                return module
         return None
     
     def matrix_from_environment(self) -> List[List[int]]:
-        if not self.grid.occupied:
-            return []
-
-        occupied = set(self.grid.occupied.keys())
-        min_x = min(x for x, _ in occupied)
-        max_x = max(x for x, _ in occupied)
-        min_y = min(y for _, y in occupied)
-        max_y = max(y for _, y in occupied)
+        min_x, max_x, min_y, max_y = self.find_bounds()
 
         rows = max_y - min_y + 1
         cols = max_x - min_x + 1
         matrix = [[0 for _ in range(cols)] for _ in range(rows)]
 
-        for (x, y) in occupied:
+        for module in self.modules.values():
+            x = module.pos[0]
+            y = module.pos[1]
             gui_x = x - min_x
             gui_y = max_y - y
             matrix[gui_y][gui_x] = 1
 
         return matrix
     
-    def transformation(self, movement_dict: Dict[int, Move], ui):
-        print("Executing Step in Phase 3")
+    def find_bounds(self) -> Tuple[int, int, int, int]:
+        min_x = None
+        max_x = None
+        min_y = None
+        max_y = None
+
+        for module in self.modules.values():
+            if min_x == None:
+                min_x = module.pos[0]
+            elif module.pos[0] < min_x:
+                min_x = module.pos[0]
+
+            if max_x == None:
+                max_x = module.pos[0]
+            elif module.pos[0] > max_x:
+                max_x = module.pos[0]
+
+            if min_y == None:
+                min_y = module.pos[1]
+            elif module.pos[1] < min_y:
+                min_y = module.pos[1]
+
+            if max_y == None:
+                max_y = module.pos[1]
+            elif module.pos[1] > max_y:
+                max_y = module.pos[1]
+        
+        return [min_x, max_x, min_y, max_y]
+
+    def transformation(self, movement_dict: Dict[int, Move]):
         modules_to_move = {}
         for id in movement_dict.keys():
             modules_to_move[id] = self.modules[id]
-            self.grid.remove(modules_to_move[id].pos)
         
         for id, move in movement_dict.items():
             dx, dy = move.delta
             new_pos = (modules_to_move[id].pos[0] + dx, modules_to_move[id].pos[1] + dy)
 
-            self.grid.place(id, new_pos)
-            self.pos = new_pos
+            self.modules[id].pos = new_pos
 
         return self
         
