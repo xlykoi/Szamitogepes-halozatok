@@ -4,6 +4,7 @@ from structures.sweepline import SweepLine
 from structures.metamodule import MetaModule
 from sweep import compute_histogram_from_environment
 from typing import Tuple, List
+from copy import deepcopy
 
 class Phase_3:
     def __init__(self, ui):
@@ -11,6 +12,7 @@ class Phase_3:
         self.step_count = 0
         self.env_queue: List[Environment] = []
         self.env, mid = self.build_env_from_ui()
+        self.done = False
 
     # --- 1) Find Sweep Line
         xs=[]
@@ -21,39 +23,90 @@ class Phase_3:
         
         self.sweep_line = None
 
+    def first_clean_step(self):
+        min_x, max_x, min_y, max_y = self.env.find_bounds()
+        metamodules: List[MetaModule] = []
+        for y in range(min_y, max_y):
+            if (y - min_y) % 3 == 1:
+                if self.sweep_line == None:
+                    metamodules.append(MetaModule(max_x - 1, y, self.env))
+                else:
+                    metamodules.append(MetaModule(self.sweep_line.x - 1, y, self.env))
+        if self.sweep_line == None:
+            self.sweep_line = SweepLine(max_x - 1, metamodules)
+        else:
+            self.sweep_line = SweepLine(self.sweep_line.x - 1, metamodules)
+        #sweep_line.full_diagnostic(env)
+        done = self.sweep_line.clean(self.env, self.env_queue)
+        print('---Sweep Line Cleaned---')
+        print('done? ', done)
+
+    def clean_step(self):
+        metamodules = []
+        if len(self.env_queue) != 0:
+            self.env = self.env_queue[-1]
+            for metamodule in self.sweep_line.metamodules:
+                x = metamodule.x
+                metamodules.append(MetaModule(metamodule.x, metamodule.y, self.env))
+
+            self.sweep_line = SweepLine(x, metamodules)
+            self.sweep_line.full_diagnostic(self.env)
+
+        done = self.sweep_line.clean(self.env, self.env_queue)
+        print('---Sweep Line Cleaned---')
+        print('done? ', done)
+
+    def gather_step(self, i):
+        clean_metamodules = []
+        if len(self.env_queue) != 0:
+            self.env = self.env_queue[-1]
+            for metamodule in self.sweep_line.metamodules:
+                clean_x = metamodule.x
+                clean_metamodules.append(MetaModule(metamodule.x, metamodule.y, self.env))
+
+            self.sweep_line = SweepLine(clean_x, clean_metamodules)
+            self.sweep_line.full_diagnostic(self.env)
+
+        self.sweep_line.gather_east_strip(self.env, self.env_queue, i)
+
+    def advance_step(self):
+        clean_metamodules = []
+        if len(self.env_queue) != 0:
+            self.env = self.env_queue[-1]
+            for metamodule in self.sweep_line.metamodules:
+                clean_x = metamodule.x
+                clean_metamodules.append(MetaModule(metamodule.x, metamodule.y, self.env))
+
+            self.sweep_line = SweepLine(clean_x, clean_metamodules)
+            self.sweep_line.full_diagnostic(self.env)
+
+        self.sweep_line.advance(self.env, self.env_queue)
+        print('---Sweep Line Advanced---')
+
     def execute_step(self):
+        if self.done:
+            print('--Sweep line finished sweeping')
+            return
+        dumb_shit = None
         print("Executing Step in Phase 3")
         if len(self.env_queue) == 0:
-            min_x, max_x, min_y, max_y = self.env.find_bounds()
-            metamodules: List[MetaModule] = []
-            for y in range(min_y, max_y):
-                if (y - min_y) % 3 == 1:
-                    if self.sweep_line == None:
-                        metamodules.append(MetaModule(max_x - 1, y, self.env))
-                    else:
-                        metamodules.append(MetaModule(self.sweep_line.x - 1, y, self.env))
-            if self.sweep_line == None:
-                self.sweep_line = SweepLine(max_x - 1, metamodules)
-            else:
-                self.sweep_line = SweepLine(self.sweep_line.x - 1, metamodules)
-            #sweep_line.full_diagnostic(env)
-            print('calculations...')
-            done = self.sweep_line.clean(self.env, self.env_queue)
-            print('---Sweep Line Cleaned---')
-            print('done? ', done)
-            
-            clean_metamodules = []
-            if len(self.env_queue) != 0:
-                for metamodule in self.sweep_line.metamodules:
-                    clean_x = metamodule.x
-                    clean_metamodules.append(MetaModule(metamodule.x, metamodule.y, self.env_queue[-1]))
+            self.first_clean_step()
 
-                self.sweep_line = SweepLine(clean_x, clean_metamodules)
-                self.sweep_line.full_diagnostic(self.env_queue[-1])
+            for i in range(-1, 2):
+                self.gather_step(i)
+                self.clean_step()
             
-            
-            self.sweep_line.advance(self.env, self.env_queue)
-            print('---Sweep Line Advanced---')
+            if len(self.env_queue) > 1:
+                dumb_shit = deepcopy(self.env_queue)
+            self.advance_step()
+            if dumb_shit != None:
+                for i, envi in enumerate(dumb_shit):
+                    self.env_queue[i] = envi
+
+        if len(self.env_queue) == 0:
+            print('--Sweep line finished sweeping')
+            self.done = True
+            return
 
         # Update sweepline and metamodule positions after moving with advance
         env_to_display = self.env_queue.pop(0)

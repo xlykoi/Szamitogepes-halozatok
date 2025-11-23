@@ -63,7 +63,7 @@ class SweepLine:
 
     def gather_east_strip(self, env, env_queue, i):
         movement_dict_queue = [{}]
-        for i, metamodule in enumerate(reversed(self.metamodules)):
+        for metamodule in self.metamodules:
             metamodule.gather_east_strip(env, movement_dict_queue, i)
 
         for movement_dict in movement_dict_queue:
