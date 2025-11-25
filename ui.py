@@ -2,6 +2,9 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from phases import (phase_1, phase_2, phase_3, phase_4)
 from phases.phase_3 import Phase_3
+from phases.phase_1 import Phase1
+
+
 from structures.module import Module
 from typing import List
 
@@ -27,10 +30,7 @@ class RobotUI:
         self.phase_num = phase_num
 
         self.phase_3 = None
-
-        # Title label
-        self.title_label = tk.Label(root, text="Sliding Squares in Parallel", font=("Arial", 16, "bold"))
-        self.title_label.grid(row=0, column=0,columnspan = 5, sticky="w", padx=5, pady=(10,10))
+        self.phase_1 = None
 
         print(f"Length of matrix: {len(matrix)} rows, {len(matrix[0])} columns ")
 
@@ -45,7 +45,54 @@ class RobotUI:
             self.robot_img = ImageTk.PhotoImage(
                 Image.open("./robot.png").resize((40, 40)))
 
+        # Create scrollable frame
+        self._setup_scrollable_frame()
+        
+        # Title label (in scrollable frame)
+        self.title_label = tk.Label(self.scrollable_frame, text="Sliding Squares in Parallel", font=("Arial", 16, "bold"))
+        self.title_label.grid(row=0, column=0, columnspan=5, sticky="w", padx=5, pady=(10,10))
+
         self.draw_matrix()
+    
+    def _setup_scrollable_frame(self):
+        """Set up a scrollable canvas with frame for the UI."""
+        # Create main container
+        main_container = tk.Frame(self.root)
+        main_container.pack(fill=tk.BOTH, expand=True)
+        
+        # Create canvas with scrollbar
+        self.canvas = tk.Canvas(main_container, highlightthickness=0)
+        scrollbar = tk.Scrollbar(main_container, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas)
+        
+        # Configure scrollbar
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        
+        # Create window in canvas for the scrollable frame
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        
+        # Configure canvas scrolling
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack canvas and scrollbar
+        self.canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Bind mousewheel to canvas
+        def _on_mousewheel(event):
+            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        # Update canvas width when window is resized
+        def configure_canvas_width(event):
+            canvas_width = event.width
+            self.canvas.itemconfig(self.canvas_window, width=canvas_width)
+        
+        self.canvas.bind('<Configure>', configure_canvas_width)
 
     def draw_matrix(self):
         # clear previous labels
@@ -53,9 +100,10 @@ class RobotUI:
             widget.destroy()
         self.labels = []
 
+        # --- MÁTRIX ÚJRA ÉPÍTÉSE ---
         for i, row in enumerate(self.matrix):
             for j, val in enumerate(row):
-                frame = tk.Frame(self.root, width=44, height=44, padx=2, pady=2, highlightbackground="black", highlightthickness=1)
+                frame = tk.Frame(self.scrollable_frame, width=44, height=44, padx=2, pady=2, highlightbackground="black", highlightthickness=1)
                 frame.grid(row=i + 1, column=j, padx=1, pady=1)
                 frame.grid_propagate(False)  # fix méret
 
@@ -68,21 +116,30 @@ class RobotUI:
 
                 self.labels.append(frame)
 
-        # Next Phase gomb csak egyszer
+        matrix_rows = len(self.matrix)
+        matrix_cols = len(self.matrix[0]) if matrix_rows > 0 else 0
+
+        # Next Phase gomb
         if not hasattr(self, "next_button"):
             self.next_button = tk.Button(
-                self.root, text="Next Phase", font=("Arial", 12, "bold"),
+                self.scrollable_frame, text="Next Phase", font=("Arial", 12, "bold"),
                 bg="lightgreen", command=self.next_phase
             )
-            self.next_button.grid(row=len(self.matrix) + 2, column=4, columnspan=int(len(self.matrix[0])/2), pady=(5, 5))
+        # EZ A SOR MOZGATJA A GOMBOT az új mátrix alá
+        self.next_button.grid(row=matrix_rows + 2, column=matrix_cols - 1, columnspan=1, pady=(5, 5), sticky="e")
         
-        # Nxt Step gomb csak egyszer
+        # Nxt Step gomb
         if not hasattr(self, "next_step_button"):
             self.next_step_button = tk.Button(
-                self.root, text="Next Step", font=("Arial", 12, "bold"),
+                self.scrollable_frame, text="Next Step", font=("Arial", 12, "bold"),
                 bg="lightgreen", command=self.next_step
             )
-            self.next_step_button.grid(row=len(self.matrix) + 2, column=1, columnspan=int(len(self.matrix[0])/2), pady=(5, 5))
+        # EZ A SOR MOZGATJA A GOMBOT az új mátrix alá
+        self.next_step_button.grid(row=matrix_rows + 2, column=0, columnspan=1, pady=(5, 5), sticky="w")
+        
+        # Update scroll region after drawing
+        self.canvas.update_idletasks()
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
 
     def update_matrix(self, new_matrix):
@@ -95,8 +152,12 @@ class RobotUI:
     def next_step(self):
         match self.phase_num:
             case 0:
-                print('No step implemented for phase 1')
+                if not self.phase_1:
+                    self.phase_1 = Phase1(self)
+                self.phase_1.execute_step()
+
             case 1:
+                
                 print('No step implemented for phase 2')
             case 2:
                 if not self.phase_3:
@@ -113,7 +174,9 @@ class RobotUI:
 
         match self.phase_num:
             case 1:
-                phase_1.execute_phase(self)
+                if not self.phase_1:
+                    self.phase_1 = Phase1(self)
+                self.phase_1.execute_phase()
             case 2:
                 # phase_2.execute_phase(self)
                 self.update_matrix(self.stub_matrix)
