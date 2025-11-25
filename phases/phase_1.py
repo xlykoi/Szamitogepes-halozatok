@@ -5,7 +5,8 @@ from structures.skeleton import (
     compute_exoskeleton_from_env,
     _get_center_of_mass, 
     _find_closest_hole, 
-    _is_move_connectivity_safe
+    _is_move_connectivity_safe,
+    _update_env_positions
 )
 from typing import Tuple, Set, Dict, List
 
@@ -26,7 +27,6 @@ def _get_move_direction(source: Pos, target: Pos) -> Move:
 
 
 def phase1_transformation(env: Environment, exo_target: Set[Pos]) -> List[Dict[int, Move]]:
-    """Teljes Phase-1 átrendezés (ez marad a FULL RUN-nak)."""
     all_moves = []
     max_iterations = 2 * len(env.modules) ** 2
 
@@ -82,20 +82,7 @@ def phase1_transformation(env: Environment, exo_target: Set[Pos]) -> List[Dict[i
 
 
 def phase1_transformation_plan(env: Environment, exo_target: Set[Pos]) -> List[Dict[int, Move]]:
-    """
-    Phase-1 lépések gyűjtése MÓDOSÍTÁS NÉLKÜL.
-    
-    Ez a függvény ugyanazt az algoritmust használja mint phase1_transformation,
-    de nem módosítja az eredeti environment-et, csak visszaadja a lépéseket.
-    
-    Args:
-        env: Environment to plan for (will NOT be modified)
-        exo_target: Target exoskeleton positions
-    
-    Returns:
-        List of movement dictionaries (one per step)
-    """
-    # Create a deep copy to work on, so original env is never modified
+   
     working_env = deepcopy(env)
     
     all_moves = []
@@ -166,10 +153,6 @@ class Phase1:
         self.has_prepared: bool = False
 
 
-    # ----------------------------
-    # ENV építés UI-ból
-    # ----------------------------
-
     def build_env_from_ui(self) -> Tuple[Environment, int]:
         matrix = self.ui.matrix
         rows = len(matrix)
@@ -189,10 +172,6 @@ class Phase1:
 
         return env, mid
 
-
-    # ----------------------------
-    # UI update bounding box-szal
-    # ----------------------------
 
     def _update_ui_with_env(self, env: Environment):
         """Update UI with environment state using bounding box."""
@@ -222,22 +201,76 @@ class Phase1:
 
 
     def execute_step(self):
-        self.env, _ = self.build_env_from_ui()
-        exo_target = compute_exoskeleton_from_env(self.env)
+        if self.done:
+            print("-- Phase 1 finished")
+            return
 
-        movement_list = phase1_transformation(self.env, exo_target)
+        if not self.has_prepared:
+            self.env, _ = self.build_env_from_ui()
+            
+            sim_env = deepcopy(self.env)
+            
+            exo_target = compute_exoskeleton_from_env(sim_env, ui=None, return_steps=False)
+            
+            phase1_steps = phase1_transformation(sim_env, exo_target)
+            
+            temp_env_for_steps = deepcopy(self.env)
+            compute_steps = compute_exoskeleton_from_env(temp_env_for_steps, ui=None, return_steps=True)
+            
+            self.steps = compute_steps + phase1_steps
+            
+            self.final_positions = set(sim_env.grid.occupied.keys())
+            
+            self.has_prepared = True
+            self.done = False
+            
+            self._update_ui_with_env(self.env)
+            print(f"Phase 1 initialized. {len(self.steps)} steps planned.")
+            self.ui.update_phase_label(f"Phase 1: Initial state ({len(self.steps)} steps remaining)")
+            return
+
+        if not self.steps:
+            if hasattr(self, 'final_positions'):
+                _update_env_positions(self.env, self.final_positions)
+            
+            print("-- Phase 1 finished")
+            self.done = True
+            self._update_ui_with_env(self.env)
+            self.ui.update_phase_label("Phase 1: Exoskeleton Constructed")
+            return
+
+        step = self.steps.pop(0)
+        success = self.env.step(step)
+        
+        if not success:
+            print(f"Warning: Step execution failed. Skipping step.")
+            if not self.steps:
+                if hasattr(self, 'final_positions'):
+                    _update_env_positions(self.env, self.final_positions)
+                self.done = True
+                self._update_ui_with_env(self.env)
+                self.ui.update_phase_label("Phase 1: Exoskeleton Constructed")
+            return
+
+        print(f"Step executed: {len(step)} modules moved")
+        for mid, mv in step.items():
+            cur_pos = self.env.modules[mid].pos
+            prev_pos = (cur_pos[0] - mv.delta[0], cur_pos[1] - mv.delta[1])
+            print(f"  Module {mid}: {prev_pos} -> {cur_pos} ({mv.name})")
 
         self._update_ui_with_env(self.env)
+        
+        remaining = len(self.steps)
+        if remaining > 0:
+            self.ui.update_phase_label(f"Phase 1: {remaining} steps remaining")
+        else:
+            if hasattr(self, 'final_positions'):
+                _update_env_positions(self.env, self.final_positions)
+            print("-- Phase 1 finished")
+            self.done = True
+            self._update_ui_with_env(self.env)
+            self.ui.update_phase_label("Phase 1: Exoskeleton Constructed")
 
-        self.ui.update_phase_label(
-            f"Phase 1: Exoskeleton Constructed ({len(movement_list)} steps)"
-        )
-            
-
-
-    # ----------------------------
-    # TELJES Phase-1 végrehajtása
-    # ----------------------------
 
     def execute_phase(self):
         """FULL RUN: minden lépés egyszerre kerül végrehajtásra."""
