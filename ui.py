@@ -3,6 +3,7 @@ from PIL import Image, ImageTk
 from phases import (phase_1, phase_2, phase_3, phase_4)
 from phases.phase_3 import Phase_3
 from phases.phase_1 import Phase1
+from phases.phase_2 import Phase2
 
 
 from structures.module import Module
@@ -31,6 +32,7 @@ class RobotUI:
 
         self.phase_3 = None
         self.phase_1 = None
+        self.phase_2 = None
         self.sweep_done = False
 
         print(f"Length of matrix: {len(matrix)} rows, {len(matrix[0])} columns ")
@@ -156,11 +158,13 @@ class RobotUI:
             case 0:
                 if not self.phase_1:
                     self.phase_1 = Phase1(self)
-                self.phase_1.execute_step()
-
+                if self.phase_1.execute_step():
+                    self.phase_num += 1
             case 1:
-                
-                print('No step implemented for phase 2')
+                if not self.phase_2:
+                    self.phase_2 = Phase2(self)
+                if self.phase_2.execute_step():
+                    self.phase_num += 1
             case 2:
                 if not self.phase_3:
                     self.phase_3 = Phase_3(self)

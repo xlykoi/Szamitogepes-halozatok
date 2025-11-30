@@ -160,7 +160,6 @@ class Snake:
                 if len(self.segments) > 0:
                     self.segments[0].segment_ahead = new_head
                 self.head = new_head
-                print('||||||||||||||||||||||||||||||||||||||||||||||||||')
                 return self.movement_dict()
             else:
                 return None

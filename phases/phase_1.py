@@ -203,7 +203,7 @@ class Phase1:
     def execute_step(self):
         if self.done:
             print("-- Phase 1 finished")
-            return
+            return True
 
         if not self.has_prepared:
             self.env, _ = self.build_env_from_ui()
