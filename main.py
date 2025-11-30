@@ -12,8 +12,10 @@ if __name__ == "__main__":
     root = tk.Tk()
 
     # matrix contains the default_config as a list
-    matrix = load_matrix_from_file()
+    matrix = load_matrix_from_file('configurations/001-input.txt')
+    goal_matrix = load_matrix_from_file('configurations/001-goal.txt')
+
     stub_matrix = load_matrix_from_file("stub_phase3_matrix.txt")
-    app = RobotUI(root, matrix, stub_matrix)
+    app = RobotUI(root, matrix, stub_matrix, goal_matrix)
 
     root.mainloop()

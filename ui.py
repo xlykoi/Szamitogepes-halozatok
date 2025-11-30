@@ -13,16 +13,16 @@ from typing import List
 # and always gets incremented when the "Next Phase" button is clicked
 
 phases_dict = {
-    0: "Inicialization",
-    1: "Phase 1: Gathering squares",
-    2: "Phase 2: Scaffolding",
-    3: "Phase 3: Sweeping into a histogram",
-    4: "Phase 4: Histograms of meta-modules",
+    0: "Phase 1: Gathering squares",
+    1: "Phase 2: Scaffolding",
+    2: "Phase 3: Sweeping into a histogram",
+    3: "Phase 4: Histograms of meta-modules",
+    4: "Done"
 }
 
 class RobotUI:
 
-    def __init__(self, root, matrix, stub_matrix, phase_num=0):
+    def __init__(self, root, matrix, stub_matrix, goal_matrix, phase_num=0):
         self.root = root
         self.root.title("Sliding Squares in Parallel Demonstrator Program")
         self.stub_matrix = stub_matrix
@@ -31,10 +31,12 @@ class RobotUI:
 
         self.phase_3 = None
         self.phase_1 = None
+        self.sweep_done = False
 
         print(f"Length of matrix: {len(matrix)} rows, {len(matrix[0])} columns ")
 
         self.matrix = matrix
+        self.goal_matrix = goal_matrix
         self.labels = []
 
         # Keep a reference to the robot image
@@ -162,7 +164,10 @@ class RobotUI:
             case 2:
                 if not self.phase_3:
                     self.phase_3 = Phase_3(self)
-                self.phase_3.execute_step()
+                if not self.sweep_done:
+                    self.sweep_done = self.phase_3.execute_step()
+                elif self.phase_3.execute_histogram_step() == True:
+                    self.phase_num += 1
             case 3:
                 print('No step implemented for phase 4')
                 

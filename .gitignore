@@ -1,2 +1,3 @@
 sliding_squares_venv/
 *.pyc
+/phases/__pycache__

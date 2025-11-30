@@ -49,10 +49,12 @@ class Environment:
 
         return True
 
-    def find_module_at(self, pos: Pos) -> Optional[Module]:
+    def find_module_at(self, pos: Pos, check_for_oob: bool = False):
         min_x, max_x, min_y, max_y = self.find_bounds()
         if pos[0] < min_x or pos[0] > max_x or pos[1] < min_y or pos[1] > max_y:
             print(pos, 'out of bounds')
+            if check_for_oob:
+                return 'oob'
             return None
         # accept list or tuple, normalize to tuple key for dict lookup
         for module in self.modules.values():

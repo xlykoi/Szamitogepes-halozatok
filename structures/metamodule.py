@@ -93,8 +93,6 @@ class MetaModule:
         return True
 
     def gather_east_strip(self, env, movement_dict_queue, i) -> None:
-        print('--------------------------------------------')
-        print(movement_dict_queue, i)
         if not self.is_clean():
             return
         trailing_module = env.find_module_at([self.x + 2, self.y + i])

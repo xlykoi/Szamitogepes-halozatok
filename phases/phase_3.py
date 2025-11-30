@@ -2,6 +2,7 @@ from environment import Environment
 from structures.module import Module
 from structures.sweepline import SweepLine
 from structures.metamodule import MetaModule
+from structures.histogram import Histogram
 from sweep import compute_histogram_from_environment
 from typing import Tuple, List
 from copy import deepcopy
@@ -13,6 +14,8 @@ class Phase_3:
         self.env_queue: List[Environment] = []
         self.env, mid = self.build_env_from_ui()
         self.done = False
+        self.histogram_compact = False
+        self.histogram = None
 
     # --- 1) Find Sweep Line
         xs=[]
@@ -86,7 +89,7 @@ class Phase_3:
     def execute_step(self):
         if self.done:
             print('--Sweep line finished sweeping')
-            return
+            return True
         dumb_shit = None
         print("Executing Step in Phase 3")
         if len(self.env_queue) == 0:
@@ -106,13 +109,40 @@ class Phase_3:
         if len(self.env_queue) == 0:
             print('--Sweep line finished sweeping')
             self.done = True
-            return
+            return True
 
         # Update sweepline and metamodule positions after moving with advance
         env_to_display = self.env_queue.pop(0)
         self.env = env_to_display
         self.ui.update_matrix(env_to_display.matrix_from_environment())
+        return False
 
+    def execute_histogram_step(self):
+        if not self.histogram_compact:
+            if len(self.env_queue) == 0:
+                if self.histogram == None:
+                    self.histogram = Histogram(self.env)
+                while not self.histogram_compact:
+                    self.histogram_compact = self.histogram.compact_to_left(self.env_queue)
+                
+                print('Compacted')
+            for env in self.env_queue:
+                matrix = env.matrix_from_environment()
+                for row in matrix:
+                    print(row)
+                print('---')
+            env_to_display = self.env_queue.pop(0)
+            self.env = env_to_display
+            self.ui.update_matrix(env_to_display.matrix_from_environment())
+            return False
+        else:
+            env_to_display = self.histogram.shift_down()
+            if env_to_display == 'done':
+                print('--Histogram construction complete')
+                return True
+            self.env = env_to_display
+            self.ui.update_matrix(env_to_display.matrix_from_environment())
+        
     def execute_phase(self):
         print("Executing Phase 3")
         
