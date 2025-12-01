@@ -34,6 +34,7 @@ class RobotUI:
         self.phase_1 = None
         self.phase_2 = None
         self.sweep_done = False
+        self.phase_4 = None
 
         print(f"Length of matrix: {len(matrix)} rows, {len(matrix[0])} columns ")
 
@@ -173,8 +174,11 @@ class RobotUI:
                 elif self.phase_3.execute_histogram_step() == True:
                     self.phase_num += 1
             case 3:
-                print('No step implemented for phase 4')
-                
+                if not self.phase_4:
+                    self.phase_4 = phase_4.Phase4(self, "configurations/001-goal.txt")
+                self.phase_4.execute_step()
+                if self.phase_4.is_done():
+                    self.phase_num += 1
 
     def next_phase(self):
         global phases_dict
@@ -187,7 +191,7 @@ class RobotUI:
                     self.phase_1 = Phase1(self)
                 self.phase_1.execute_phase()
             case 2:
-                # phase_2.execute_phase(self)
+             
                 self.update_matrix(self.stub_matrix)
                 self.update_phase_label("Phase 2: Scaffolding Constructed")
                 print("Phase 2 completed successfully.")
@@ -196,7 +200,9 @@ class RobotUI:
                     self.phase_3 = Phase_3(self)
                 self.phase_3.execute_phase()
             case 4:
-                phase_4.execute_phase(self)
+                if not self.phase_4:
+                    self.phase_4 = phase_4.Phase4(self, "configurations/001-goal.txt")
+                self.phase_4.execute_phase()
 
         if self.phase_num == 4:
             self.next_button.destroy()
