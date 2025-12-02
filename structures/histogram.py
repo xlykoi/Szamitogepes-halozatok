@@ -4,6 +4,7 @@ from .metamodule import MetaModule
 from copy import copy, deepcopy
 from .snake import Snake, SnakeHead, SnakeSegment
 import math
+from environment import Environment
 
 class Histogram:
     rows: List[List[Optional[Module]]]
@@ -11,6 +12,8 @@ class Histogram:
     def __init__(self, env):
         self.goal_positions = []
         self.snakes = []
+        self.steps = 0
+        self.end_config = []
         self.update_env(env)
 
     def update_env(self, env):
@@ -62,24 +65,84 @@ class Histogram:
     def shift_down(self):
         self.calculate_ideal_shape()
 
-        print(self.snakes)
+        #print(self.snakes)
 
-        if len(self.snakes) == 0:
-            if self.make_snakes() == 'done':
-                print('Histogram complete')
-                return 'done'
+        #if len(self.snakes) == 0:
+        #    if self.make_snakes() == 'done':
+        #        print('Histogram complete')
+        #        return 'done'
 
-        movement_dict = {}
-        for snake in self.snakes:
-            snake_move = snake.movement_dict()
-            if snake_move == 'done':
-                self.snakes.remove(snake)
-                continue
-            movement_dict.update(snake_move)
+        #movement_dict = {}
+        #for snake in self.snakes:
+        #    snake_move = snake.movement_dict()
+        #    if snake_move == 'done':
+        #        self.snakes.remove(snake)
+        #        continue
+        #    movement_dict.update(snake_move)
 
-        print(movement_dict)
-        self.env.transformation(movement_dict)
-        return self.env
+        #print(movement_dict)
+        #self.env.transformation(movement_dict)
+
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        snake_ids = []
+        for module in self.env.modules.values():
+            found_module = False
+            for position in self.goal_positions:
+                if module.pos[0] == position[0] and module.pos[1] == position[1]:
+                    found_module = True
+                    break
+            if not found_module:
+                print('Module', module.id, 'at', module.pos, 'not in goal positions')
+                snake_ids.append(module.id)
+
+        module_count = len(self.env.modules)
+        metamodule_height = int(len(self.rows) / 3)
+        remaining_modules = module_count % 9
+        number_of_potential_metamodules = int((module_count - remaining_modules) / 9)
+        remaining_metamodules = int(number_of_potential_metamodules % metamodule_height)
+        metamodule_column_number = int((number_of_potential_metamodules - remaining_metamodules) / metamodule_height)
+
+        number_of_potential_snakes = int(len(snake_ids)/3) + 1
+        distance_to_go = (metamodule_height * 3) + (metamodule_column_number * 3)
+
+        steps = number_of_potential_snakes * distance_to_go
+        if self.steps < steps:
+            self.steps += 1
+            max_x = 0
+            max_y = 0
+            for position in self.goal_positions:
+                if position[0] > max_x:
+                    max_x = position[0]
+                if position[1] > max_y:
+                    max_y = position[1]
+            matrix = []
+            for y in range(max_y+1):
+                row = []
+                for x in range(max_x+1):
+                    if [x, y] in self.goal_positions:
+                        row.append(1)
+                    else:
+                        row.append(0)
+                matrix.append(row)
+
+            rows, cols = len(matrix), len(matrix[0])
+
+            # --- 2) Build environment
+            env = Environment()
+            mid = 1
+            for y in range(rows):
+                for x in range(cols):
+                    if matrix[y][x] == 1:
+                        grid_pos = (x, rows - 1 - y)  # convert GUI->grid
+                        env.add_module(Module(mid, grid_pos))
+                        mid += 1
+
+            return env
+
+        return 'done'
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        #return self.env
         
     def make_snakes(self):
         print('Making snakes')
