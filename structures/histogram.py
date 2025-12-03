@@ -65,7 +65,7 @@ class Histogram:
     def shift_down(self):
         self.calculate_ideal_shape()
         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        
+        '''
         print(self.snakes)
 
         if len(self.snakes) == 0:
@@ -83,9 +83,9 @@ class Histogram:
 
         print(movement_dict)
         self.env.transformation(movement_dict)
-        
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         '''
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
         snake_ids = []
         for module in self.env.modules.values():
             found_module = False
@@ -142,7 +142,7 @@ class Histogram:
             return env
 
         return 'done'
-        '''
+        
         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         return self.env
