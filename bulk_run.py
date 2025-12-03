@@ -52,16 +52,12 @@ if __name__ == "__main__":
 
 
         filename = 'stats/success_rate.txt'
-        saved_successful_runs = None
-        saved_failed_runs = None
-        with open(filename) as f:
-            saved_successful_runs, saved_failed_runs = [int(x) for x in next(f).split()]
 
         saved_successful_runs += successful_runs
         saved_failed_runs += failed_runs
 
         with open(filename, 'a') as f:
-            f.write((str(node_num) + '\t' +str(saved_successful_runs) + '\t' + str(saved_failed_runs)))
+            f.write((str(node_num) + '\t' +str(successful_runs) + '\t' + str(failed_runs) + '\n'))
 
         filename = 'stats/step_counts.txt'
         
