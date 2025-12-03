@@ -109,6 +109,7 @@ class Phase2:
 
         center_x, center_y = _get_center_of_mass(positions)
         center_x = round(center_x)
+        
         center_y = round(center_y)
         if self.env.find_module_at([center_x, center_y]) == None:
             self.center_pos = [center_x, center_y]
@@ -134,6 +135,34 @@ class Phase2:
         if type(self.env.find_module_at(self.center_pos)) == Module:
             print('Baj van!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
 
+        if self.center_pos[0] == self.max_x - 2:
+            self.center_pos[0] = self.max_x - 3
+            module_to_move = self.env.find_module_at([self.max_x - 3, self.center_pos[1]])
+            movement_dict = {}
+            movement_dict[module_to_move.id] = Move.EAST
+            self.env.transformation(movement_dict)
+            self.env_queue.append(deepcopy(self.env))
+        
+        elif self.center_pos[0] == self.max_x - 1:
+            self.center_pos[0] = self.max_x - 3
+            modules_to_move = [self.env.find_module_at([self.max_x - 3, self.center_pos[1]]), self.env.find_module_at([self.max_x - 2, self.center_pos[1]])]
+            movement_dict = {}
+            for module_to_move in modules_to_move:
+                movement_dict[module_to_move.id] = Move.EAST
+            self.env.transformation(movement_dict)
+            self.env_queue.append(deepcopy(self.env))
+
+        elif self.center_pos[0] == self.max_x:
+            self.center_pos[0] = self.max_x - 3
+            modules_to_move = [self.env.find_module_at([self.max_x - 3, self.center_pos[1]]), self.env.find_module_at([self.max_x - 2, self.center_pos[1]]), self.env.find_module_at([self.max_x - 1, self.center_pos[1]])]
+            movement_dict = {}
+            for module_to_move in modules_to_move:
+                movement_dict[module_to_move.id] = Move.EAST
+            self.env.transformation(movement_dict)
+            self.env_queue.append(deepcopy(self.env))
+            
+
+            
         print('Center pos:', self.center_pos)
 
         # Grow arm

@@ -1,8 +1,7 @@
 import random
 import os
 
-if __name__ == "__main__":
-    module_num = 30
+def generate_input(module_num):
     for i in range(100):
         modules = []
         modules.append([4, 4])

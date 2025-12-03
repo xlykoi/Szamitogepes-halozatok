@@ -64,26 +64,28 @@ class Histogram:
 
     def shift_down(self):
         self.calculate_ideal_shape()
-
-        #print(self.snakes)
-
-        #if len(self.snakes) == 0:
-        #    if self.make_snakes() == 'done':
-        #        print('Histogram complete')
-        #        return 'done'
-
-        #movement_dict = {}
-        #for snake in self.snakes:
-        #    snake_move = snake.movement_dict()
-        #    if snake_move == 'done':
-        #        self.snakes.remove(snake)
-        #        continue
-        #    movement_dict.update(snake_move)
-
-        #print(movement_dict)
-        #self.env.transformation(movement_dict)
-
         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
+        print(self.snakes)
+
+        if len(self.snakes) == 0:
+            if self.make_snakes() == 'done':
+                print('Histogram complete')
+                return 'done'
+
+        movement_dict = {}
+        for snake in self.snakes:
+            snake_move = snake.movement_dict()
+            if snake_move == 'done':
+                self.snakes.remove(snake)
+                continue
+            movement_dict.update(snake_move)
+
+        print(movement_dict)
+        self.env.transformation(movement_dict)
+        
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        '''
         snake_ids = []
         for module in self.env.modules.values():
             found_module = False
@@ -140,9 +142,10 @@ class Histogram:
             return env
 
         return 'done'
+        '''
         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        #return self.env
+        return self.env
         
     def make_snakes(self):
         print('Making snakes')
