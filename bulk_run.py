@@ -53,9 +53,6 @@ if __name__ == "__main__":
 
         filename = 'stats/success_rate.txt'
 
-        saved_successful_runs += successful_runs
-        saved_failed_runs += failed_runs
-
         with open(filename, 'a') as f:
             f.write((str(node_num) + '\t' +str(successful_runs) + '\t' + str(failed_runs) + '\n'))
 
