@@ -12,10 +12,10 @@ def load_matrix_from_file(filename="default_config_copy.txt"):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    successful_runs = 0
-    step_counts = []
-    failed_runs = 0
     for node_num in range(350, 500):
+        successful_runs = 0
+        step_counts = []
+        failed_runs = 0
         generate_input(node_num)
         for i in range(10):
             try:
