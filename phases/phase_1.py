@@ -6,9 +6,11 @@ from structures.skeleton import (
     _get_center_of_mass, 
     _find_closest_hole, 
     _is_move_connectivity_safe,
-    _update_env_positions
+    _update_env_positions,
+    is_connected,
+    _select_safe_moves
 )
-from typing import Tuple, Set, Dict, List
+from typing import Tuple, Set, Dict, List, Optional
 
 Pos = Tuple[int, int]
 
@@ -68,10 +70,23 @@ def phase1_transformation(env: Environment, exo_target: Set[Pos]) -> List[Dict[i
                             temp_holes.add(current_pos)
 
         if movement_dict:
-            if env.step(movement_dict):
-                all_moves.append(movement_dict)
+            # Use _select_safe_moves to ensure connectivity and prevent collisions
+            safe_movement_dict = _select_safe_moves(env, movement_dict)
+            
+            if safe_movement_dict:
+                if env.step(safe_movement_dict):
+                    # Verify connectivity after step
+                    new_positions = set(env.grid.occupied.keys())
+                    if not is_connected(new_positions):
+                        print(f"[WARN] Phase 1 connectivity broken at step {i+1}. This should not happen.")
+                    all_moves.append(safe_movement_dict)
+                else:
+                    print(f"[WARN] Phase 1 elakadás a {i+1}. lépésben.")
+                    break
             else:
-                print(f"[WARN] Phase 1 elakadás a {i+1}. lépésben.")
+                print(f"[WARN] Phase 1 no safe moves at step {i+1}.")
+                if current_positions != exo_target:
+                    print(f"[WARN] Phase 1 elakadás: nem érték el a cél alakzatot.")
                 break
         else:
             if current_positions != exo_target:
@@ -173,7 +188,32 @@ class Phase1:
 
 
     def _update_ui_with_env(self, env: Environment):
-        final_positions = {mod.pos for mod in env.modules.values()}
+        final_positions = {mod.pos for mod in env.modules.values() if mod.pos is not None}
+        
+        module_count = len(env.modules)
+        positions_count = len(final_positions)
+        if module_count != positions_count:
+            print(f"[Phase1] WARNING: Module count mismatch! "
+                  f"Modules: {module_count}, Positions: {positions_count}")
+            
+            none_pos_modules = [mid for mid, mod in env.modules.items() if mod.pos is None]
+            if none_pos_modules:
+                print(f"[Phase1] WARNING: {len(none_pos_modules)} modules have None position: {none_pos_modules}")
+            
+            position_to_modules: Dict[Pos, List[int]] = {}
+            for mid, mod in env.modules.items():
+                if mod.pos is not None:
+                    if mod.pos not in position_to_modules:
+                        position_to_modules[mod.pos] = []
+                    position_to_modules[mod.pos].append(mid)
+            
+            duplicates = {pos: mids for pos, mids in position_to_modules.items() if len(mids) > 1}
+            if duplicates:
+                print(f"[Phase1] ERROR: {len(duplicates)} positions have multiple modules!")
+                for pos, mids in duplicates.items():
+                    print(f"[Phase1]   Position {pos} has {len(mids)} modules: {mids}")
+                self._fix_duplicate_positions(env, duplicates)
+                final_positions = {m.pos for m in env.modules.values() if m.pos is not None}
         
         if not final_positions:
             self.ui.update_matrix([[]])
@@ -193,6 +233,11 @@ class Phase1:
             gui_y = max_y - y
             if 0 <= gui_y < rows and 0 <= gui_x < cols:
                 new_matrix[gui_y][gui_x] = 1
+        
+        matrix_module_count = sum(sum(row) for row in new_matrix)
+        if matrix_module_count != len(final_positions):
+            print(f"[Phase1] WARNING: Matrix module count mismatch! "
+                  f"Expected {len(final_positions)} modules, found {matrix_module_count} in matrix")
         
         self.ui.update_matrix(new_matrix)
 
@@ -236,7 +281,52 @@ class Phase1:
             return
 
         step = self.steps.pop(0)
-        success = self.env.step(step)
+        
+        # Collision detection: check if multiple modules target the same position
+        targets: Dict[int, Pos] = {}
+        for mid, mv in step.items():
+            if mid not in self.env.modules:
+                continue
+            mod = self.env.modules[mid]
+            dx, dy = mv.delta
+            tgt = (mod.pos[0] + dx, mod.pos[1] + dy)
+            if not self.env.grid.in_bounds(tgt):
+                tgt = mod.pos
+            targets[mid] = tgt
+        
+        position_to_modules: Dict[Pos, List[int]] = {}
+        for mid, tgt in targets.items():
+            if tgt not in position_to_modules:
+                position_to_modules[tgt] = []
+            position_to_modules[tgt].append(mid)
+        
+        # Filter out collisions - only allow one module per target position
+        safe_step: Dict[int, Move] = {}
+        for pos, module_ids in position_to_modules.items():
+            if len(module_ids) > 1:
+                module_ids.sort()
+                print(f"[Phase1] WARNING: Collision detected at {pos}! Modules {module_ids} all targeting same position.")
+                print(f"[Phase1] Only allowing module {module_ids[0]} to move, others will stay in place.")
+                mid = module_ids[0]
+                safe_step[mid] = step[mid]
+            else:
+                mid = module_ids[0]
+                safe_step[mid] = step[mid]
+        
+        # Use _select_safe_moves to ensure connectivity
+        connectivity_safe_step = _select_safe_moves(self.env, safe_step)
+        
+        if not connectivity_safe_step:
+            print(f"[Phase1] WARNING: No connectivity-safe moves in step. Skipping step.")
+            if not self.steps:
+                if hasattr(self, 'final_positions'):
+                    _update_env_positions(self.env, self.final_positions)
+                self.done = True
+                self._update_ui_with_env(self.env)
+                self.ui.update_phase_label("Phase 1: Exoskeleton Constructed")
+            return
+        
+        success = self.env.step(connectivity_safe_step)
         
         if not success:
             print(f"Warning: Step execution failed. Skipping step.")
@@ -247,9 +337,17 @@ class Phase1:
                 self._update_ui_with_env(self.env)
                 self.ui.update_phase_label("Phase 1: Exoskeleton Constructed")
             return
+        
+        # Verify connectivity after step
+        new_positions = {mod.pos for mod in self.env.modules.values() if mod.pos is not None}
+        if not is_connected(new_positions):
+            print(f"[Phase1] ERROR: Connectivity broken after step! This should not happen.")
+        
+        # Sync grid with module positions
+        self._sync_grid_with_modules()
 
-        print(f"Step executed: {len(step)} modules moved")
-        for mid, mv in step.items():
+        print(f"Step executed: {len(connectivity_safe_step)} modules moved")
+        for mid, mv in connectivity_safe_step.items():
             cur_pos = self.env.modules[mid].pos
             prev_pos = (cur_pos[0] - mv.delta[0], cur_pos[1] - mv.delta[1])
             print(f"  Module {mid}: {prev_pos} -> {cur_pos} ({mv.name})")
@@ -271,3 +369,189 @@ class Phase1:
             f"Phase 1: Exoskeleton Constructed ({len(movement_list)} steps)"
         )
         print("Phase 1 completed successfully.")
+    
+    def _fix_duplicate_positions(self, env: Environment, duplicates: Dict[Pos, List[int]]):
+        """Fix duplicate positions by moving modules to empty, connectivity-safe positions."""
+        from collections import deque
+        from typing import Optional
+        
+        print(f"[Phase1] Fixing {len(duplicates)} duplicate positions...")
+        
+        occupied = {mod.pos for mod in env.modules.values() if mod.pos is not None}
+        occupied.update(env.grid.occupied.keys())
+        
+        fixed_count = 0
+        failed_count = 0
+        all_moves = {}
+        
+        for pos, module_ids in duplicates.items():
+            module_ids.sort()
+            modules_to_move = module_ids[1:]
+            
+            for mid in modules_to_move:
+                mod = env.modules[mid]
+                old_pos = mod.pos
+                
+                empty_pos = self._find_nearest_empty_position_connectivity_safe(pos, occupied, env, old_pos)
+                
+                if empty_pos:
+                    if empty_pos in occupied or empty_pos in env.grid.occupied:
+                        if empty_pos in all_moves.values():
+                            empty_pos = self._find_nearest_empty_position_connectivity_safe(pos, occupied, env, old_pos, exclude=set(all_moves.values()))
+                            if not empty_pos:
+                                print(f"[Phase1] ERROR: Could not find connectivity-safe position for module {mid}!")
+                                failed_count += 1
+                                continue
+                        else:
+                            print(f"[Phase1] WARNING: Position {empty_pos} is occupied! Skipping module {mid}.")
+                            failed_count += 1
+                            continue
+                    
+                    test_positions = occupied.copy()
+                    test_positions.discard(old_pos)
+                    test_positions.add(empty_pos)
+                    if not is_connected(test_positions):
+                        print(f"[Phase1] ERROR: Position {empty_pos} breaks connectivity! Skipping module {mid}.")
+                        failed_count += 1
+                        continue
+                    
+                    all_moves[mid] = empty_pos
+                    occupied.discard(old_pos)
+                    occupied.add(empty_pos)
+                    fixed_count += 1
+                else:
+                    print(f"[Phase1] ERROR: Could not find connectivity-safe empty position for module {mid}!")
+                    failed_count += 1
+        
+        for mid, new_pos in all_moves.items():
+            mod = env.modules[mid]
+            old_pos = mod.pos
+            
+            current_positions = {m.pos for m in env.modules.values() if m.pos is not None}
+            test_positions = current_positions.copy()
+            test_positions.discard(old_pos)
+            test_positions.add(new_pos)
+            
+            if not is_connected(test_positions):
+                print(f"[Phase1] ERROR: Moving module {mid} to {new_pos} would break connectivity! Skipping this move.")
+                failed_count += 1
+                continue
+            
+            print(f"[Phase1] Moving module {mid} from duplicate position {old_pos} to {new_pos} (connectivity-safe)")
+            
+            mod.pos = new_pos
+            
+            if old_pos in env.grid.occupied:
+                if env.grid.occupied[old_pos] == mid:
+                    env.grid.remove(old_pos)
+            
+            env.grid.place(mid, new_pos)
+            
+            new_positions = {m.pos for m in env.modules.values() if m.pos is not None}
+            if not is_connected(new_positions):
+                print(f"[Phase1] ERROR: Connectivity broken after moving module {mid}! Reverting move.")
+                mod.pos = old_pos
+                env.grid.remove(new_pos)
+                env.grid.place(mid, old_pos)
+                failed_count += 1
+                continue
+        
+        print(f"[Phase1] Duplicate fix complete: {fixed_count} modules moved, {failed_count} failed")
+        
+        final_positions = {m.pos for m in env.modules.values() if m.pos is not None}
+        if not is_connected(final_positions):
+            print(f"[Phase1] ERROR: Connectivity broken after duplicate fix! This should not happen.")
+        
+        self._sync_grid_with_modules()
+    
+    def _find_nearest_empty_position_connectivity_safe(self, start_pos: Pos, occupied: Set[Pos], env: Environment, module_pos: Pos, exclude: Optional[Set[Pos]] = None) -> Optional[Pos]:
+        """Find nearest empty position that maintains connectivity."""
+        from collections import deque
+        
+        if exclude is None:
+            exclude = set()
+        
+        MAX_SEARCH_DISTANCE = 100
+        MAX_VISITED = 2000
+        
+        queue = deque([(start_pos, 0)])
+        visited = {start_pos}
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        
+        while queue and len(visited) < MAX_VISITED:
+            current, dist = queue.popleft()
+            
+            if dist > MAX_SEARCH_DISTANCE:
+                continue
+            
+            for dx, dy in directions:
+                neighbor = (current[0] + dx, current[1] + dy)
+                
+                if neighbor in visited:
+                    continue
+                visited.add(neighbor)
+                
+                if not env.grid.in_bounds(neighbor):
+                    continue
+                
+                neighbor_dist = abs(neighbor[0] - start_pos[0]) + abs(neighbor[1] - start_pos[1])
+                if neighbor_dist > MAX_SEARCH_DISTANCE:
+                    continue
+                
+                if neighbor in occupied or neighbor in env.grid.occupied or neighbor in exclude:
+                    queue.append((neighbor, neighbor_dist))
+                    continue
+                
+                test_positions = occupied.copy()
+                test_positions.discard(module_pos)
+                test_positions.add(neighbor)
+                
+                if is_connected(test_positions):
+                    return neighbor
+                
+                queue.append((neighbor, neighbor_dist))
+        
+        if len(visited) >= MAX_VISITED:
+            print(f"[Phase1] WARNING: Search limit reached ({MAX_VISITED} positions) while looking for connectivity-safe empty position near {start_pos}")
+        
+        return None
+    
+    def _sync_grid_with_modules(self):
+        """Sync grid with module positions, removing duplicates and ensuring consistency."""
+        self.env.grid.occupied.clear()
+        
+        position_to_modules: Dict[Pos, List[int]] = {}
+        for mid, mod in self.env.modules.items():
+            if mod.pos is not None:
+                if mod.pos not in position_to_modules:
+                    position_to_modules[mod.pos] = []
+                position_to_modules[mod.pos].append(mid)
+        
+        for pos, module_ids in position_to_modules.items():
+            if len(module_ids) > 1:
+                print(f"[Phase1] WARNING: Grid sync found {len(module_ids)} modules at position {pos}: {module_ids}")
+                module_ids.sort()
+                keep_module = module_ids[0]
+                modules_to_fix = module_ids[1:]
+                
+                self.env.grid.place(keep_module, pos)
+                
+                for mid in modules_to_fix:
+                    mod = self.env.modules[mid]
+                    occupied = {m.pos for m in self.env.modules.values() if m.pos is not None}
+                    occupied.update(self.env.grid.occupied.keys())
+                    empty_pos = self._find_nearest_empty_position_connectivity_safe(pos, occupied, self.env, pos)
+                    if empty_pos:
+                        test_positions = occupied.copy()
+                        test_positions.discard(pos)
+                        test_positions.add(empty_pos)
+                        if is_connected(test_positions):
+                            print(f"[Phase1] Moving duplicate module {mid} from {pos} to {empty_pos} during grid sync (connectivity-safe)")
+                            mod.pos = empty_pos
+                            self.env.grid.place(mid, empty_pos)
+                        else:
+                            print(f"[Phase1] ERROR: Position {empty_pos} breaks connectivity for module {mid} during grid sync!")
+                    else:
+                        print(f"[Phase1] ERROR: Could not find connectivity-safe empty position for duplicate module {mid} during grid sync!")
+            else:
+                self.env.grid.place(module_ids[0], pos)
