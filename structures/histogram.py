@@ -43,7 +43,7 @@ class Histogram:
     def compact_to_left(self, env_queue) -> bool:
         self.setup_from_env(self.env)
         for row in self.rows:
-            print(row)
+            pass
         did_nothing = True
         movement_dict = {}
         for row in self.rows:
@@ -58,93 +58,64 @@ class Histogram:
                         movement_dict[module.id] = Move.WEST
 
         if not did_nothing:
-            env_queue.append(deepcopy(self.env.transformation(movement_dict)))
+            new_env = self.env.transformation(movement_dict)
+            env_queue.append(deepcopy(new_env))
+            self.env = new_env
+        
         done = did_nothing
         return done
 
     def shift_down(self):
-        self.calculate_ideal_shape()
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        '''
-        print(self.snakes)
-
+        if not self.goal_positions:
+             self.calculate_ideal_shape()
+        
         if len(self.snakes) == 0:
-            if self.make_snakes() == 'done':
+            result = self.make_snakes()
+            if result == 'done':
                 print('Histogram complete')
                 return 'done'
 
         movement_dict = {}
-        for snake in self.snakes:
+        for snake in list(self.snakes):
             snake_move = snake.movement_dict()
             if snake_move == 'done':
                 self.snakes.remove(snake)
                 continue
-            movement_dict.update(snake_move)
-
-        print(movement_dict)
-        self.env.transformation(movement_dict)
-        '''
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        
-        snake_ids = []
-        for module in self.env.modules.values():
-            found_module = False
-            for position in self.goal_positions:
-                if module.pos[0] == position[0] and module.pos[1] == position[1]:
-                    found_module = True
-                    break
-            if not found_module:
-                print('Module', module.id, 'at', module.pos, 'not in goal positions')
-                snake_ids.append(module.id)
-
-        module_count = len(self.env.modules)
-        metamodule_height = int(len(self.rows) / 3)
-        remaining_modules = module_count % 9
-        number_of_potential_metamodules = int((module_count - remaining_modules) / 9)
-        remaining_metamodules = int(number_of_potential_metamodules % metamodule_height)
-        metamodule_column_number = int((number_of_potential_metamodules - remaining_metamodules) / metamodule_height)
-
-        number_of_potential_snakes = int(len(snake_ids)/3) + 1
-        distance_to_go = (metamodule_height * 3) + (metamodule_column_number * 3)
-
-        steps = number_of_potential_snakes * distance_to_go
-        if self.steps < steps:
-            self.steps += 1
-            max_x = 0
-            max_y = 0
-            for position in self.goal_positions:
-                if position[0] > max_x:
-                    max_x = position[0]
-                if position[1] > max_y:
-                    max_y = position[1]
-            matrix = []
-            for y in range(max_y+1):
-                row = []
-                for x in range(max_x+1):
-                    if [x, y] in self.goal_positions:
-                        row.append(1)
+            if snake_move is None:
+                self.snakes.remove(snake)
+                continue
+            if isinstance(snake_move, dict):
+                for module_id, move in snake_move.items():
+                    if isinstance(move, Move) and hasattr(move, 'delta'):
+                        movement_dict[module_id] = move
                     else:
-                        row.append(0)
-                matrix.append(row)
+                        print(f'Warning: Invalid move for module {module_id}: {move}')
 
-            rows, cols = len(matrix), len(matrix[0])
+        if not movement_dict and len(self.snakes) == 0:
+             print('Histogram complete')
+             return 'done'
 
-            # --- 2) Build environment
-            env = Environment()
-            mid = 1
-            for y in range(rows):
-                for x in range(cols):
-                    if matrix[y][x] == 1:
-                        grid_pos = (x, rows - 1 - y)  # convert GUI->grid
-                        env.add_module(Module(mid, grid_pos))
-                        mid += 1
+        if not movement_dict:
+            print('Warning: No valid movements from snakes')
+            return self.env
 
-            return env
-
-        return 'done'
+        print(f'Applying {len(movement_dict)} snake movements')
         
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+        for module_id in movement_dict.keys():
+            if module_id in self.env.modules:
+                old_pos = self.env.modules[module_id].pos
+                self.env.grid.remove(old_pos)
+        
+        self.env = self.env.transformation(movement_dict)
+        
+        for module_id in movement_dict.keys():
+            if module_id in self.env.modules:
+                new_pos = self.env.modules[module_id].pos
+                self.env.grid.place(module_id, new_pos)
+        
+        for snake in self.snakes:
+            snake.update_env(self.env)
+        
         return self.env
         
     def make_snakes(self):
@@ -158,12 +129,10 @@ class Histogram:
             found_module = False
             for position in self.goal_positions:
                 if module.pos[0] == position[0] and module.pos[1] == position[1]:
-                    print('Module', module.id, 'at', module.pos, 'in goal positions')
                     goal_ids.append(module.id)
                     found_module = True
                     break
             if not found_module:
-                print('Module', module.id, 'at', module.pos, 'not in goal positions')
                 snake_ids.append(module.id)
 
         print('Snake IDs:', snake_ids)
@@ -183,81 +152,101 @@ class Histogram:
                 triple_row = []
                 row_counter = 0
         
+        self.snakes = []
+
         for triple in triple_rows:
             snake_pos = 0
+            
+            current_max_x = -1
             for row in triple:
-                if len(row)-1 > snake_pos:
-                    snake_pos = len(row)-1
-            print('snake pos in triple:', snake_pos)
+                for module in row:
+                     if module is not None and module.pos[0] > current_max_x:
+                         current_max_x = module.pos[0]
+            
+            snake_pos = current_max_x
+            
             snake_modules = []
             for row in triple:
-                if len(row)-1 == snake_pos and row[snake_pos].id in snake_ids:
-                    snake_modules.append(row[snake_pos])
-            print('snake modules:', snake_modules)
+                for module in row:
+                    if module is not None and module.pos[0] == snake_pos and module.id in snake_ids:
+                        snake_modules.append(module)
+            
             if len(snake_modules) > 0:
-                snake_head = SnakeHead(snake_modules[-1], Move.SOUTH, self.env)
+                snake_head_module = snake_modules[0]
+                
+                snake_segments_modules = snake_modules[1:]
+                
+                snake_head = SnakeHead(snake_head_module, Move.SOUTH, self.env)
+                
                 segment_ahead = snake_head
                 snake_segments = []
-                for module in reversed(snake_modules):
-                    if module == snake_modules[-1]:
-                        continue
+                
+                for module in snake_segments_modules:
                     segment = SnakeSegment(module, segment_ahead)
                     segment_ahead = segment
                     snake_segments.append(segment)
+                
                 self.snakes.append(Snake(snake_head, snake_segments, self.env))
 
-            for snake in self.snakes:
-                print('snake head:', snake.head.module, 'segment ahead:', snake.head.segment_ahead, 'last move:', snake.head.last_move)
-                for segment in snake_segments:
-                    print('segment:', segment.module, 'segment ahead:', segment.segment_ahead.module, 'last move:', segment.last_move)
+        for snake in self.snakes:
+            print('New Snake Created. Head:', snake.head.module.id)
 
     def calculate_ideal_shape(self):
         module_count = len(self.env.modules)
-        metamodule_height = int(len(self.rows) / 3)
+        min_x, max_x, min_y, max_y = self.env.find_bounds()
+        
+        total_height = len(self.rows)
+        if total_height % 3 != 0:
+             pass 
+             
+        metamodule_height = int(total_height / 3)
+        
         remaining_modules = module_count % 9
         number_of_potential_metamodules = int((module_count - remaining_modules) / 9)
-        remaining_metamodules = int(number_of_potential_metamodules % metamodule_height)
-        metamodule_column_number = int((number_of_potential_metamodules - remaining_metamodules) / metamodule_height)
         
-
-        print('Module count: ', module_count)
-        print('Metamodule height: ', metamodule_height)
-        print('Remaining modules: ', remaining_modules)
-        print('Number of potential metamodules: ', number_of_potential_metamodules)
-        print('Remaining metamodules: ', remaining_metamodules)
-        print('Metamodule column number: ', metamodule_column_number)
-
+        metamodule_column_number = math.ceil(number_of_potential_metamodules / metamodule_height)
+        
         metamodule_columns = []
-        for n in range(metamodule_column_number):
+        for n in range(metamodule_column_number + 1):
             metamodule_columns.append([])
-        metamodule_columns.append([])
 
-        metamodules_not_added_to_column = copy(number_of_potential_metamodules)
-        for column in metamodule_columns:
-            for _n in range(metamodule_height):
-                if metamodules_not_added_to_column == 0:
-                    column.append(0.5)
-                    break
-                column.append(1)
-                metamodules_not_added_to_column -= 1
+        metamodules_to_place = number_of_potential_metamodules
         
+        current_col = 0
+        while metamodules_to_place > 0:
+            if len(metamodule_columns[current_col]) < metamodule_height:
+                metamodule_columns[current_col].append(1)
+                metamodules_to_place -= 1
+            else:
+                current_col += 1
+                
+        if remaining_modules > 0:
+             placed = False
+             for col in metamodule_columns:
+                 if len(col) < metamodule_height:
+                     col.append(0.5)
+                     placed = True
+                     break
+             if not placed:
+                 metamodule_columns[-1].append(0.5)
+
         self.goal_positions = []
-        min_x, max_x, min_y, max_y = self.env.find_bounds()
         modules_not_added_to_histogram = copy(remaining_modules)
+        
         for column_idx, column in enumerate(metamodule_columns):
-            for metamodule_idx, metamodule in enumerate(column):
-                if metamodule == 1:
+            for metamodule_idx, metamodule_type in enumerate(column):
+                base_x = min_x + (column_idx * 3)
+                base_y = min_y + (metamodule_idx * 3)
+                
+                if metamodule_type == 1:
                     for x in range(3):
                         for y in range(3):
-                            self.goal_positions.append([min_x + (column_idx*3) + x, min_y + (metamodule_idx*3) + y])
+                            self.goal_positions.append([base_x + x, base_y + y])
                             
-
-                
-                if metamodule == 0.5:
+                elif metamodule_type == 0.5:
                     for x in range(3):
                         for y in range(3):
                             if modules_not_added_to_histogram > 0:
-                                self.goal_positions.append([min_x + (column_idx*3) + x, min_y + (metamodule_idx*3) + y])
+                                self.goal_positions.append([base_x + x, base_y + y])
                                 modules_not_added_to_histogram -= 1
         
-        print(self.goal_positions)

@@ -25,7 +25,7 @@ class Module:
     _pos: tuple[int, int] = field(repr=False)
 
     def __post_init__(self):
-        self.pos = self._pos  # Initialize using the property setter
+        self.pos = self._pos
 
     @property
     def pos(self):
@@ -37,8 +37,6 @@ class Module:
         print(f'Module {self.id} pos changed to {self._pos}')    
 
     def move_to(self, new_pos: tuple[int, int], env):
-        """Közvetlenül áthelyezi a modult a megadott pozícióba."""
-        # Ensure new_pos is a tuple (not a list)
         if not isinstance(new_pos, tuple):
             new_pos = tuple(new_pos)
         if not env.grid.in_bounds(new_pos):
@@ -46,7 +44,6 @@ class Module:
         if new_pos in env.grid.occupied:
             print(f"[WARN] Cell {new_pos} is occupied, overwriting")
             env.grid.remove(new_pos)
-        # frissítés: régi hely törlése, új hely lefoglalása
         env.grid.remove(self.pos)
         env.grid.place(self.id, new_pos)
         self.pos = new_pos

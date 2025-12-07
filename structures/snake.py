@@ -52,14 +52,6 @@ class SnakeHead(SnakeSegment):
         far_ahead_module = self.env.find_module_at([self.module.pos[0] + deltas['far_ahead'][0], self.module.pos[1] + deltas['far_ahead'][1]], check_for_oob=True)
         left_flank_module = self.env.find_module_at([self.module.pos[0] + deltas['left_flank'][0], self.module.pos[1] + deltas['left_flank'][1]], check_for_oob=True)
 
-        print('right:', type(right_module))
-        print('left:', type(left_module))
-        print('ahead:', type(ahead_module))
-        print('far ahead:', type(far_ahead_module))
-        print('left flank:', type(left_flank_module))
-
-        # Based on where the snake head is facing, and if it wants to go ahead, turn left or turn right
-        # the values are the move that this function has to return and the direction the head must be facing after the movement
         head_move_dict = {
             Move.SOUTH: {
                 'ahead': [Move.SOUTH, Move.SOUTH],
@@ -86,47 +78,39 @@ class SnakeHead(SnakeSegment):
         move = None
         new_facing = None
 
-        # If the bounding box end is reached
         if ahead_module == 'oob':
             print('reached bounding box end, remaking snake')
             return 'done'
 
-        # Turn right on convex corner, or turn right to fill dead end
         elif not isinstance(right_module, Module) and not isinstance(left_module, Module) and not isinstance(ahead_module, Module):
             print('turning right on convex corner or dead end')
             move = head_move['diagonal_right'][0]
             new_facing = head_move['diagonal_right'][1]
 
-        # Go ahead along smooth wall
         elif not isinstance(left_module, Module) and not isinstance(ahead_module, Module) and not isinstance(far_ahead_module, Module) and isinstance(right_module, Module):
             print('going ahead along smooth wall')
             move = head_move['ahead'][0]
             new_facing = head_move['ahead'][1]
         
-        # Turn left on concave corner
         elif not isinstance(left_module, Module) and not isinstance(ahead_module, Module) and isinstance(right_module, Module) and isinstance(far_ahead_module, Module):
             print('turning left on concave corner')
             move = head_move['diagonal_left'][0]
             new_facing = head_move['diagonal_right'][1]
 
-        # Go deeper into dead end
         elif isinstance(left_module, Module) and isinstance(right_module, Module) and not isinstance(ahead_module, Module):
             print('going deeper into dead end')
             move = head_move['ahead'][0]
             new_facing = head_move['ahead'][1]
 
-        # If reached the end of a dead end remake the snake with new head
         elif isinstance(left_module, Module) and isinstance(right_module, Module) and isinstance(ahead_module, Module) and isinstance(left_flank_module, Module):
             print('reached end of dead end, remaking snake')
             return 'remake_snake'
         
-        #If after a right corner turn the snake runs into a corner, and has a left space to go into
         elif isinstance(right_module, Module) and isinstance(ahead_module, Module) and not isinstance(left_module, Module):
             print('after right corner turn, running into corner with left space to go into')
             move = head_move['diagonal_left'][0]
             new_facing = head_move['ahead'][1]
 
-        #If after a right corner turn the snake runs into a corner, and has no left space to go into
         elif isinstance(left_module, Module) and isinstance(right_module, Module) and isinstance(ahead_module, Module) and not isinstance(left_flank_module, Module):
             print('after right corner turn, running into corner with no left space to go into')
             move = head_move['just_left'][0]
@@ -147,6 +131,11 @@ class Snake:
         self.segments = segments
         self.env = env
 
+    def update_env(self, env):
+        self.env = env
+        if self.head:
+            self.head.env = env
+
     def movement_dict(self):
         movement_dict = {}
         move = self.head.calculate_next_move()
@@ -163,14 +152,28 @@ class Snake:
                 return self.movement_dict()
             else:
                 return None
+        
+        if move is None:
+            print(f'Warning: Snake head {self.head.module.id} calculate_next_move returned None')
+            return None
+        if not isinstance(move, Move):
+            print(f'Warning: Snake head {self.head.module.id} calculate_next_move returned non-Move: {type(move)}, {move}')
+            return None
+        
         movement_dict[self.head.module.id] = move
 
         for segment in self.segments:
-            movement_dict[segment.module.id] = segment.segment_ahead.last_move
+            if segment.segment_ahead and hasattr(segment.segment_ahead, 'last_move'):
+                segment_move = segment.segment_ahead.last_move
+                if isinstance(segment_move, Move) and hasattr(segment_move, 'delta'):
+                    movement_dict[segment.module.id] = segment_move
+                else:
+                    print(f'Warning: Segment {segment.module.id} has invalid last_move: {segment_move} (type: {type(segment_move)})')
 
             
         for segment in reversed(self.segments):
-            segment.last_move = segment.segment_ahead.last_move
+            if segment.segment_ahead and hasattr(segment.segment_ahead, 'last_move'):
+                segment.last_move = segment.segment_ahead.last_move
             
         self.head.last_move = move
         
