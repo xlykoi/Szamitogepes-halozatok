@@ -107,12 +107,29 @@ class RobotUI:
         matrix_rows = len(self.matrix)
         matrix_cols = len(self.matrix[0]) if matrix_rows > 0 else 0
 
-        if not hasattr(self, "next_step_button"):
-            self.next_step_button = tk.Button(
-                self.scrollable_frame, text="Next Step", font=("Arial", 12, "bold"),
-                bg="lightgreen", command=self.next_step
-            )
-        self.next_step_button.grid(row=matrix_rows + 2, column=0, columnspan=1, pady=(5, 5), sticky="w")
+        phase_4_done = (self.phase_num == 4 or 
+                       (self.phase_4 is not None and self.phase_4.is_done()))
+
+        if phase_4_done:
+            if hasattr(self, "next_step_button"):
+                self.next_step_button.grid_remove()
+            
+            if not hasattr(self, "exit_button"):
+                self.exit_button = tk.Button(
+                    self.scrollable_frame, text="Exit", font=("Arial", 12, "bold"),
+                    bg="lightcoral", command=self.root.quit
+                )
+            self.exit_button.grid(row=matrix_rows + 2, column=0, columnspan=1, pady=(5, 5), sticky="w")
+        else:
+            if hasattr(self, "exit_button"):
+                self.exit_button.grid_remove()
+            
+            if not hasattr(self, "next_step_button"):
+                self.next_step_button = tk.Button(
+                    self.scrollable_frame, text="Next Step", font=("Arial", 12, "bold"),
+                    bg="lightgreen", command=self.next_step
+                )
+            self.next_step_button.grid(row=matrix_rows + 2, column=0, columnspan=1, pady=(5, 5), sticky="w")
         
         self.canvas.update_idletasks()
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -130,6 +147,7 @@ class RobotUI:
             case 0:
                 if not self.phase_1:
                     self.phase_1 = Phase1(self)
+                    self.update_phase_label(phases_dict[0])
                 if self.phase_1.execute_step():
                     self.phase_num += 1
                     if self.phase_num in phases_dict:
@@ -158,3 +176,4 @@ class RobotUI:
                     self.phase_num += 1
                     if self.phase_num in phases_dict:
                         self.update_phase_label(phases_dict[self.phase_num])
+                    self.draw_matrix()

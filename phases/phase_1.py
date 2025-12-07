@@ -140,7 +140,6 @@ def phase1_transformation_plan(env: Environment, exo_target: Set[Pos]) -> List[D
 
 
 class Phase1:
-    """Phase 1 kezelés UI snapshot queue-val (mint Phase 3)."""
 
     def __init__(self, ui):
         self.ui = ui
@@ -174,8 +173,6 @@ class Phase1:
 
 
     def _update_ui_with_env(self, env: Environment):
-        """Update UI with environment state using bounding box."""
-        # Use actual module positions
         final_positions = {mod.pos for mod in env.modules.values()}
         
         if not final_positions:
@@ -226,7 +223,6 @@ class Phase1:
             
             self._update_ui_with_env(self.env)
             print(f"Phase 1 initialized. {len(self.steps)} steps planned.")
-            self.ui.update_phase_label(f"Phase 1: Initial state ({len(self.steps)} steps remaining)")
             return
 
         if not self.steps:
@@ -259,23 +255,11 @@ class Phase1:
             print(f"  Module {mid}: {prev_pos} -> {cur_pos} ({mv.name})")
 
         self._update_ui_with_env(self.env)
-        
-        remaining = len(self.steps)
-        if remaining > 0:
-            self.ui.update_phase_label(f"Phase 1: {remaining} steps remaining")
-        else:
-            if hasattr(self, 'final_positions'):
-                _update_env_positions(self.env, self.final_positions)
-            print("-- Phase 1 finished")
-            self.done = True
-            self._update_ui_with_env(self.env)
-            self.ui.update_phase_label("Phase 1: Exoskeleton Constructed")
+            
+      
 
 
     def execute_phase(self):
-        """FULL RUN: minden lépés egyszerre kerül végrehajtásra."""
-        print("Executing Phase 1: Building Exoskeleton (Full Run)")
-
         self.env, _ = self.build_env_from_ui()
         exo_target = compute_exoskeleton_from_env(self.env)
 
