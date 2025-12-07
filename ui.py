@@ -35,6 +35,7 @@ class RobotUI:
         self.phase_2 = None
         self.sweep_done = False
         self.phase_4 = None
+        self.center_cell = None
 
         print(f"Length of matrix: {len(matrix)} rows, {len(matrix[0])} columns ")
 

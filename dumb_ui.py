@@ -36,6 +36,7 @@ class DumbUI:
         self.matrix = matrix
         self.goal_matrix = goal_matrix
         self.labels = []
+        self.center_cell = None
 
     def update_matrix(self, new_matrix):
         self.matrix = new_matrix
@@ -67,4 +68,7 @@ class DumbUI:
                     self.phase_num += 1
                     
     def update_phase_label(self, text):
+        pass
+
+    def draw_matrix(self):
         pass

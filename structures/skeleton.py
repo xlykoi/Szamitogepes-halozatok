@@ -373,6 +373,7 @@ def compute_exoskeleton_from_env(env: Environment, ui=None, max_iters: int = 100
 
     # leave center empty (so modules can slide around)
     center_cell = _calculate_center(target_exo)
+    ui.center_cell = center_cell
     if center_cell and center_cell in target_exo:
         target_exo.discard(center_cell)
 

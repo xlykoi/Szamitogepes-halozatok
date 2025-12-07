@@ -12,22 +12,29 @@ def load_matrix_from_file(filename="default_config_copy.txt"):
 
 if __name__ == "__main__":
     root = tk.Tk()
+    phases = [0, 0, 0, 0, 0]
     for node_num in range(40, 41):
         successful_runs = 0
         step_counts = []
+        runs = 0
         failed_runs = 0
         destinations = [88, 95]
-        #generate_input(node_num)
+        generate_input(node_num)
         for i in range(100):
-            filename = 'stats/step_counts.txt'
-            with open(filename) as f:
-                lines = [line.strip() for line in f if line.strip()]
+            matrix_1 = random.randrange(100)
+            matrix_2 = random.randrange(100)
+            matrix = load_matrix_from_file('configurations/input-' + str(matrix_1) + '.txt')
+            y1 = len(matrix)
+            x1 = len(matrix[0])
+            goal_matrix = load_matrix_from_file('configurations/input-' + str(matrix_2) + '.txt')
+            y2 = len(goal_matrix)
+            x2 = len(goal_matrix[0])
+        generate_input(node_num)
+        for runs in range(100):
             #try:
-            random_num = random.randrange(5000)
             # matrix contains the default_config as a list
-            print(lines[random_num].split())
-            matrix_1 = lines[random_num].split()[4]
-            matrix_2 = lines[random_num].split()[5]
+            matrix_1 = random.randrange(100)
+            matrix_2 = random.randrange(100)
             matrix = load_matrix_from_file('configurations/input-' + str(matrix_1) + '.txt')
             y1 = len(matrix)
             x1 = len(matrix[0])
@@ -46,10 +53,16 @@ if __name__ == "__main__":
                 step_count+=1
             
             successful_runs += 1
-            step_counts.append([i, perimeter, step_count, matrix_1, matrix_2])
+            step_counts.append([runs, perimeter, step_count])
             print('step_count:', step_count)
-            #except:
-            #    failed_runs += 1
+            '''
+            except:
+                filename = 'stats/fail.txt'
+                phase_num = app.phase_num
+                phases[phase_num] += 1
+                with open(filename, 'a') as f:
+                    f.write(str(app.phase_num) + '\n')
+                failed_runs += 1'''
 
         print('========================================================')
         print('successful runs:', successful_runs)
@@ -66,4 +79,6 @@ if __name__ == "__main__":
         
         with open(filename, 'a') as f:
             for step_count in step_counts:
-                f.write((str(step_count[0]) + '\t' + str(node_num) + '\t' + str(step_count[1]) + '\t' + str(step_count[2]) + '\t' + str(step_count[3]) + '\t' + str(step_count[4]) + '\n'))
+                f.write((str(node_num) + '\t' + str(step_count[1]) + '\t' + str(step_count[2]) + '\n'))
+
+    print (phases)

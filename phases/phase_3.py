@@ -118,30 +118,42 @@ class Phase_3:
         return False
 
     def execute_histogram_step(self):
-        if not self.histogram_compact:
-            if len(self.env_queue) == 0:
-                if self.histogram == None:
-                    self.histogram = Histogram(self.env)
-                while not self.histogram_compact:
-                    self.histogram_compact = self.histogram.compact_to_left(self.env_queue)
-                
-                print('Compacted')
-            for env in self.env_queue:
-                matrix = env.matrix_from_environment()
-                for row in matrix:
-                    print(row)
-                print('---')
+        if self.histogram is None:
+            self.histogram = Histogram(self.env)
+
+        if len(self.env_queue) > 0:
             env_to_display = self.env_queue.pop(0)
             self.env = env_to_display
+            self.histogram.update_env(env_to_display)
             self.ui.update_matrix(env_to_display.matrix_from_environment())
             return False
+
+        
+        if not self.histogram_compact:
+            is_finished = self.histogram.compact_to_left(self.env_queue)
+            
+            if not is_finished:
+                print(f"Compacting step generated. Queue size: {len(self.env_queue)}")
+                return False
+            else:
+                print('Compaction complete. Switching to Vertical Shift (Snakes).')
+                self.histogram_compact = True
+                
+                self.histogram.calculate_ideal_shape()
+                return False 
+
         else:
-            env_to_display = self.histogram.shift_down()
-            if env_to_display == 'done':
+            result = self.histogram.shift_down()
+            
+            if result == 'done':
                 print('--Histogram construction complete')
                 return True
-            self.env = env_to_display
-            self.ui.update_matrix(env_to_display.matrix_from_environment())
+            
+            if isinstance(result, Environment):
+                self.env = result
+                self.ui.update_matrix(result.matrix_from_environment())
+            
+            return False
         
     def execute_phase(self):
         print("Executing Phase 3")

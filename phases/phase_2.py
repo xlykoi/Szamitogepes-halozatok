@@ -65,8 +65,9 @@ class Phase2:
     def __init__(self, ui):
         self.ui = ui
         self.env, mid = self.build_env_from_ui()
-        self.setup()
         self.env_queue = []
+        self.center_pos = None
+        self.setup()
         self.line_1_done = False
         self.line_2_done = False
         self.line_3_done = False
@@ -107,30 +108,38 @@ class Phase2:
         for module in self.env.modules.values():
             positions.append(module.pos)
 
-        center_x, center_y = _get_center_of_mass(positions)
-        center_x = round(center_x)
+        matrix = self.env.matrix_from_environment()
+        for i, row in enumerate(matrix):
+            for j, module in enumerate(row):
+                if module == 0:
+                    if i != 0 and i != len(matrix)-1:
+                        if j != 0 and j != len(row)-1:
+                            if matrix[i-1][j] == 1 and matrix[i+1][j] == 1 and matrix[i][j-1] == 1 and matrix[i][j+1] == 1:
+                                self.center_pos = [j, (len(matrix) - i - 1)]
         
-        center_y = round(center_y)
-        if self.env.find_module_at([center_x, center_y]) == None:
-            self.center_pos = [center_x, center_y]
-        else:
-            if self.env.find_module_at([center_x + 1, center_y]) == None:
-                self.center_pos = [center_x + 1, center_y]
-            if self.env.find_module_at([center_x - 1, center_y]) == None:
-                self.center_pos = [center_x - 1, center_y]
-            if self.env.find_module_at([center_x, center_y + 1]) == None:
-                self.center_pos = [center_x, center_y + 1]
-            if self.env.find_module_at([center_x, center_y - 1]) == None:
-                self.center_pos = [center_x, center_y - 1]
-            if self.env.find_module_at([center_x + 1, center_y + 1]) == None:
-                self.center_pos = [center_x + 1, center_y + 1]
-            if self.env.find_module_at([center_x - 1, center_y - 1]) == None:
-                self.center_pos = [center_x - 1, center_y - 1]
-            if self.env.find_module_at([center_x + 1, center_y - 1]) == None:
-                self.center_pos = [center_x + 1, center_y - 1]
-            if self.env.find_module_at([center_x - 1, center_y + 1]) == None:
-                self.center_pos = [center_x - 1, center_y + 1]
+        for row in matrix:
+            print(row)
+        if self.center_pos == None:
+            center_x, center_y = _get_center_of_mass(positions)
+            center_x = round(center_x)
+            center_y = round(center_y)
 
+            movement_dict = {}
+            for x in range(self.center_pos[0], max_x + 1):
+                module = self.env.find_module_at([x, self.center_pos[1]])
+                if module == None: 
+                    break
+                movement_dict[module.id] = Move.EAST
+                if x == self.max_x:
+                    self.max_x += 1
+
+            self.env.transformation(movement_dict)
+            self.env_queue.append(deepcopy(self.env))
+
+
+        print(self.center_pos)
+        center_x = self.center_pos[0]
+        center_y = self.center_pos[1]
 
         if type(self.env.find_module_at(self.center_pos)) == Module:
             print('Baj van!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
@@ -167,7 +176,7 @@ class Phase2:
 
         # Grow arm
         self.arm = []
-        for x in range(self.center_pos[0], max_x + 1):
+        for x in range(self.center_pos[0], self.max_x + 1):
             self.arm.append(self.env.find_module_at([x, self.center_pos[1]]))
 
         print('Arm:', self.arm)
@@ -213,7 +222,8 @@ class Phase2:
         movement_dict = {}
         for i, module in enumerate(self.arm):
             if i < len(self.arm) - 1:
-                movement_dict[module.id] = Move.EAST
+                if module != None:
+                    movement_dict[module.id] = Move.EAST
 
         if not self.line_1_done or not self.line_2_done or not self.line_3_done:
             # Push up?

@@ -210,12 +210,12 @@ class Phase1:
             
             sim_env = deepcopy(self.env)
             
-            exo_target = compute_exoskeleton_from_env(sim_env, ui=None, return_steps=False)
+            exo_target = compute_exoskeleton_from_env(sim_env, ui=self.ui, return_steps=False)
             
             phase1_steps = phase1_transformation(sim_env, exo_target)
             
             temp_env_for_steps = deepcopy(self.env)
-            compute_steps = compute_exoskeleton_from_env(temp_env_for_steps, ui=None, return_steps=True)
+            compute_steps = compute_exoskeleton_from_env(temp_env_for_steps, ui=self.ui, return_steps=True)
             
             self.steps = compute_steps + phase1_steps
             
@@ -277,7 +277,7 @@ class Phase1:
         print("Executing Phase 1: Building Exoskeleton (Full Run)")
 
         self.env, _ = self.build_env_from_ui()
-        exo_target = compute_exoskeleton_from_env(self.env)
+        exo_target = compute_exoskeleton_from_env(self.env, ui=self.ui)
 
         movement_list = phase1_transformation(self.env, exo_target)
 
