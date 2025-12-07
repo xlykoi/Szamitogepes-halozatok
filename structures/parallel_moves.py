@@ -57,7 +57,7 @@ def compute_parallel_moves(env: Environment,
             old_dist = abs(src[0] - tgt[0]) + abs(src[1] - tgt[1])
             new_dist = abs(new_pos[0] - tgt[0]) + abs(new_pos[1] - tgt[1])
 
-            if new_dist < old_dist and new_pos not in working_env.grid.occupied:
+            if new_dist < old_dist:
                 proposals[mid] = mv
 
         if not proposals:

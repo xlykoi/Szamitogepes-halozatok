@@ -25,7 +25,6 @@ class Phase4:
         self._in_final_alignment: bool = False         
 
     def build_env_from_ui(self) -> Tuple[Environment, int]:
-        """Build an Environment from the current UI.matrix (same logic as RobotUI)."""
         matrix = getattr(self.ui, "matrix", [])
         rows = len(matrix)
         if rows == 0:
@@ -72,52 +71,74 @@ class Phase4:
         if not positions:
             return [[]]
         
+        all_x = [p[0] for p in positions]
+        all_y = [p[1] for p in positions]
+        min_x, max_x = min(all_x), max(all_x)
+        min_y, max_y = min(all_y), max(all_y)
+        
         use_target_dimensions = False
+        target_rows = None
+        target_cols = None
+        
         if hasattr(self, 'target_positions') and self.target_positions and hasattr(self, 'target_file'):
             positions_match = positions == self.target_positions
             in_alignment = hasattr(self, '_in_final_alignment') and self._in_final_alignment
             phase_done = hasattr(self, 'done') and self.done
             
             if positions_match or in_alignment or phase_done:
-                use_target_dimensions = True
-                if positions_match:
-                    reason = "positions match target"
-                elif in_alignment:
-                    reason = "in final alignment"
-                elif phase_done:
-                    reason = "phase is done"
-                else:
-                    reason = "unknown"
+                target_matrix = self._load_matrix_from_file(self.target_file)
+                if target_matrix:
+                    target_rows = len(target_matrix)
+                    target_cols = len(target_matrix[0]) if target_rows > 0 else 0
+                    min_x = min(min_x, 0)  
+                    max_x = max(max_x, target_cols - 1)
+                    min_y = min(min_y, 0)
+                    max_y = max(max_y, target_rows - 1)
         
-        if use_target_dimensions:
-            target_matrix = self._load_matrix_from_file(self.target_file)
-            if target_matrix:
-                rows = len(target_matrix)
-                cols = len(target_matrix[0]) if rows > 0 else 0
-                new_matrix = [[0 for _ in range(cols)] for _ in range(rows)]
-                for x, y in positions:
-                    matrix_y = rows - 1 - y
-                    matrix_x = x
-                    if 0 <= matrix_y < rows and 0 <= matrix_x < cols:
-                        new_matrix[matrix_y][matrix_x] = 1
-                return new_matrix
-        
-        all_x = [p[0] for p in positions]
-        all_y = [p[1] for p in positions]
-        min_x, max_x = min(all_x), max(all_x)
-        min_y, max_y = min(all_y), max(all_y)
         rows = max_y - min_y + 1
         cols = max_x - min_x + 1
         new_matrix = [[0 for _ in range(cols)] for _ in range(rows)]
+        
         for x, y in positions:
             gx = x - min_x
-            gy = max_y - y  
+            gy = max_y - y
             if 0 <= gy < rows and 0 <= gx < cols:
                 new_matrix[gy][gx] = 1
+            else:
+                print(f"[Phase4] WARNING: Module at ({x}, {y}) is outside calculated bounds! "
+                      f"Bounds: x=[{min_x}, {max_x}], y=[{min_y}, {max_y}], "
+                      f"Matrix size: {rows}x{cols}, Calculated pos: ({gx}, {gy})")
+        
         return new_matrix
 
     def _update_ui_with_env(self, env: Environment):
         final_positions = {m.pos for m in env.modules.values() if m.pos is not None}
+        
+        module_count = len(env.modules)
+        positions_count = len(final_positions)
+        if module_count != positions_count:
+            print(f"[Phase4] WARNING: Module count mismatch! "
+                  f"Modules: {module_count}, Positions: {positions_count}")
+            
+            none_pos_modules = [mid for mid, mod in env.modules.items() if mod.pos is None]
+            if none_pos_modules:
+                print(f"[Phase4] WARNING: {len(none_pos_modules)} modules have None position: {none_pos_modules}")
+            
+            position_to_modules: Dict[Pos, List[int]] = {}
+            for mid, mod in env.modules.items():
+                if mod.pos is not None:
+                    if mod.pos not in position_to_modules:
+                        position_to_modules[mod.pos] = []
+                    position_to_modules[mod.pos].append(mid)
+            
+            duplicates = {pos: mids for pos, mids in position_to_modules.items() if len(mids) > 1}
+            if duplicates:
+                print(f"[Phase4] ERROR: {len(duplicates)} positions have multiple modules!")
+                for pos, mids in duplicates.items():
+                    print(f"[Phase4]   Position {pos} has {len(mids)} modules: {mids}")
+                self._fix_duplicate_positions(env, duplicates)
+                final_positions = {m.pos for m in env.modules.values() if m.pos is not None}
+        
         if not final_positions:
             try:
                 self.ui.update_matrix([[]])
@@ -128,22 +149,10 @@ class Phase4:
         
         new_matrix = self._convert_positions_to_matrix(final_positions)
         
-        if hasattr(self, 'target_positions') and self.target_positions and hasattr(self, 'target_file'):
-            if (hasattr(self, 'done') and self.done) or (final_positions == self.target_positions):
-                target_matrix = self._load_matrix_from_file(self.target_file)
-                if target_matrix:
-                    expected_rows = len(target_matrix)
-                    expected_cols = len(target_matrix[0]) if expected_rows > 0 else 0
-                    actual_rows = len(new_matrix)
-                    actual_cols = len(new_matrix[0]) if actual_rows > 0 else 0
-                    if actual_rows != expected_rows or actual_cols != expected_cols:
-                        print(f"[Phase4] WARNING: Matrix dimensions incorrect! Expected {expected_rows}x{expected_cols}, got {actual_rows}x{actual_cols}")
-                        print(f"[Phase4] Re-converting with target dimensions...")
-                        self._in_final_alignment = True
-                        try:
-                            new_matrix = self._convert_positions_to_matrix(final_positions)
-                        finally:
-                            self._in_final_alignment = False
+        matrix_module_count = sum(sum(row) for row in new_matrix)
+        if matrix_module_count != len(final_positions):
+            print(f"[Phase4] WARNING: Matrix module count mismatch! "
+                  f"Expected {len(final_positions)} modules, found {matrix_module_count} in matrix")
         
         try:
             self.ui.update_matrix(new_matrix)
@@ -162,7 +171,6 @@ class Phase4:
         if self.has_prepared:
             return
 
-        # build env from UI
         self.env, next_mid = self.build_env_from_ui()
         initial_module_count = len(self.env.modules)
         print(f"[Phase4] ===== PHASE 4 PREPARATION =====")
@@ -175,7 +183,6 @@ class Phase4:
             self.done = True
             return
 
-        # load target matrix from file and build a target_env
         target_matrix = self._load_matrix_from_file(self.target_file)
         if target_matrix:
             self.target_env = self._build_env_from_matrix(target_matrix)
@@ -199,7 +206,6 @@ class Phase4:
             self.done = True
             return
 
-        # counts
         num_modules = len(self.env.modules)
         num_targets = len(self.target_positions)
 
@@ -227,7 +233,6 @@ class Phase4:
         self.has_prepared = True
         self.done = False
 
-        # show initial state in UI and goal
         self._update_ui_with_env(self.env)
         try:
             self.ui.draw_matrix()
@@ -249,12 +254,44 @@ class Phase4:
 
         if self.current_index < len(self.steps):
             step = self.steps[self.current_index]
-            ok = self.env.step(deepcopy(step))
+            
+            targets: Dict[int, Pos] = {}
+            for mid, mv in step.items():
+                if mid not in self.env.modules:
+                    continue
+                mod = self.env.modules[mid]
+                dx, dy = mv.delta
+                tgt = (mod.pos[0] + dx, mod.pos[1] + dy)
+                if not self.env.grid.in_bounds(tgt):
+                    tgt = mod.pos
+                targets[mid] = tgt
+            
+            position_to_modules: Dict[Pos, List[int]] = {}
+            for mid, tgt in targets.items():
+                if tgt not in position_to_modules:
+                    position_to_modules[tgt] = []
+                position_to_modules[tgt].append(mid)
+            
+            safe_step: Dict[int, Move] = {}
+            for pos, module_ids in position_to_modules.items():
+                if len(module_ids) > 1:
+                    module_ids.sort()
+                    print(f"[Phase4] WARNING: Collision detected at {pos}! Modules {module_ids} all targeting same position.")
+                    print(f"[Phase4] Only allowing module {module_ids[0]} to move, others will stay in place.")
+                    mid = module_ids[0]
+                    safe_step[mid] = step[mid]
+                else:
+                    mid = module_ids[0]
+                    safe_step[mid] = step[mid]
+            
+            ok = self.env.step(deepcopy(safe_step))
             
             if not ok:
                 print("[Phase4] Step execution failed; will apply final alignment.")
                 self.current_index = len(self.steps)  
             else:
+                self._sync_grid_with_modules()
+                
                 self.current_index += 1
                 self._update_ui_with_env(self.env)
                 try:
@@ -336,7 +373,6 @@ class Phase4:
                         if ui_positions != self.target_positions:
                             print(f"[Phase4] WARNING: UI matrix mismatch detected! Re-updating UI...")
                             print(f"  UI has {len(ui_positions)} positions, target has {len(self.target_positions)}")
-                            # Force re-update
                             self._update_ui_with_env(self.env)
                             self.ui.draw_matrix()
                         else:
@@ -613,7 +649,7 @@ class Phase4:
                 next_mid = max(self.env.modules.keys()) + 1 if self.env.modules else 1
                 
                 for i in range(num_targets - num_modules):
-                    temp_pos = (-1000 - next_mid, -1000 - next_mid)  # Far away temporary position
+                    temp_pos = (-1000 - next_mid, -1000 - next_mid)
                     new_module = Module(next_mid, temp_pos)
                     self.env.modules[new_module.id] = new_module
                     print(f"[Phase4] Created module {new_module.id} (will be placed at target position)")
@@ -672,3 +708,73 @@ class Phase4:
 
     def is_done(self) -> bool:
         return self.done
+    
+    def _fix_duplicate_positions(self, env: Environment, duplicates: Dict[Pos, List[int]]):
+        print(f"[Phase4] Fixing {len(duplicates)} duplicate positions...")
+        
+        occupied = {mod.pos for mod in env.modules.values() if mod.pos is not None}
+        
+        for pos, module_ids in duplicates.items():
+            module_ids.sort()
+            modules_to_move = module_ids[1:]
+            
+            for mid in modules_to_move:
+                mod = env.modules[mid]
+                empty_pos = self._find_nearest_empty_position(pos, occupied, env)
+                if empty_pos:
+                    print(f"[Phase4] Moving module {mid} from duplicate position {pos} to {empty_pos}")
+                    old_pos = mod.pos
+                    mod.pos = empty_pos
+                    if old_pos in env.grid.occupied:
+                        env.grid.remove(old_pos)
+                    env.grid.place(mid, empty_pos)
+                    occupied.discard(old_pos)
+                    occupied.add(empty_pos)
+                else:
+                    print(f"[Phase4] ERROR: Could not find empty position for module {mid}!")
+    
+    def _find_nearest_empty_position(self, start_pos: Pos, occupied: Set[Pos], env: Environment) -> Optional[Pos]:
+        from collections import deque
+        
+        if start_pos not in occupied:
+            return start_pos
+        
+        queue = deque([start_pos])
+        visited = {start_pos}
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        
+        while queue:
+            current = queue.popleft()
+            
+            for dx, dy in directions:
+                neighbor = (current[0] + dx, current[1] + dy)
+                
+                if neighbor in visited:
+                    continue
+                visited.add(neighbor)
+                
+                if not env.grid.in_bounds(neighbor):
+                    continue
+                
+                if neighbor not in occupied:
+                    return neighbor
+                
+                queue.append(neighbor)
+        
+        return None
+    
+    def _sync_grid_with_modules(self):
+        grid_positions = set(self.env.grid.occupied.keys())
+        module_positions = {mod.pos for mod in self.env.modules.values() if mod.pos is not None}
+        
+        for pos in list(grid_positions):
+            if pos not in module_positions:
+                self.env.grid.remove(pos)
+        
+        for mid, mod in self.env.modules.items():
+            if mod.pos is not None:
+                if mod.pos not in self.env.grid.occupied:
+                    self.env.grid.place(mid, mod.pos)
+                elif self.env.grid.occupied[mod.pos] != mid:
+                    print(f"[Phase4] WARNING: Grid sync found position {mod.pos} occupied by module {self.env.grid.occupied[mod.pos]}, but module {mid} is also there!")
+                    self.env.grid.place(mid, mod.pos)
